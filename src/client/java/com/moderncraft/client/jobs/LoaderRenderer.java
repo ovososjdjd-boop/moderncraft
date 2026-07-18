@@ -1,28 +1,20 @@
 package com.moderncraft.client.jobs;
 
 import com.moderncraft.economy.jobs.LoaderEntity;
-import net.minecraft.client.render.VertexConsumerProvider;
-import net.minecraft.client.render.entity.EntityRenderer;
 import net.minecraft.client.render.entity.EntityRendererFactory;
-import net.minecraft.client.util.math.MatrixStack;
+import net.minecraft.client.render.entity.MobEntityRenderer;
+import net.minecraft.client.render.entity.model.BipedEntityModel;
+import net.minecraft.client.render.entity.model.EntityModelLayers;
 import net.minecraft.util.Identifier;
 
-/** No-draw renderer for the loader. Same approach as CafeCourierRenderer. */
-public class LoaderRenderer extends EntityRenderer<LoaderEntity> {
-
-    public LoaderRenderer(EntityRendererFactory.Context ctx) {
-        super(ctx);
-        this.shadowRadius = 0.5f;
-    }
-
-    @Override
-    public void render(LoaderEntity entity, float yaw, float tickDelta, MatrixStack matrices,
-                       VertexConsumerProvider vertexConsumers, int light) {
-        // intentionally empty
+/** Renders the loader with the vanilla player model until a dedicated worker model is added. */
+public final class LoaderRenderer extends MobEntityRenderer<LoaderEntity, BipedEntityModel<LoaderEntity>> {
+    public LoaderRenderer(EntityRendererFactory.Context context) {
+        super(context, new BipedEntityModel<>(context.getPart(EntityModelLayers.PLAYER)), 0.5f);
     }
 
     @Override
     public Identifier getTexture(LoaderEntity entity) {
-        return Identifier.of("moderncraft", "textures/entity/loader.png");
+        return Identifier.of("minecraft", "textures/entity/player/wide/alex.png");
     }
 }

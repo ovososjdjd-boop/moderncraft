@@ -31,6 +31,8 @@ public final class CourierJobHandler {
                     CafeCourierEntity.class,
                     villager.getBoundingBox().expand(64.0),
                     c -> c.activeOrder() != null
+                            && c.activeOrder().recipientId().equals(villager.getUuid())
+                            && !c.activeOrder().expired(world.getTime())
             ).stream().findFirst().orElse(null);
             if (courier == null) {
                 serverPlayer.sendMessage(Text.literal("Villager trading is replaced by Moderncraft jobs and the market."), true);

@@ -7,6 +7,7 @@ import net.minecraft.entity.ai.goal.WanderAroundFarGoal;
 import net.minecraft.entity.attribute.DefaultAttributeContainer;
 import net.minecraft.entity.attribute.EntityAttributes;
 import net.minecraft.entity.mob.PathAwareEntity;
+import net.minecraft.entity.passive.VillagerEntity;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
@@ -38,9 +39,9 @@ import java.util.Random;
  *     <li>No order -> wait ~1 minute, then generate one.</li>
  *     <li>With an active order: emit happy-villager particles every 2s
  *         and glow (setGlowing(true)).</li>
- *     <li>Player right-clicks while holding the requested item -> take
- *         the items, pay 1.5x the sell price, clear the order.</li>
- *     <li>If the player right-clicks without the items -> a hint message.</li>
+ *     <li>Player asks for the order at the cafe, walks to the assigned resident,
+ *         delivers the items and receives 1.5x the sell price.</li>
+ *     <li>Orders expire after ten minutes and are regenerated later.</li>
  * </ol>
  */
 public class CafeCourierEntity extends PathAwareEntity {
@@ -76,6 +77,11 @@ public class CafeCourierEntity extends PathAwareEntity {
             nbt.putString("OrderItem", activeOrder.itemId());
             nbt.putInt("OrderCount", activeOrder.count());
             nbt.putLong("OrderReward", activeOrder.reward());
+            nbt.putUuid("OrderRecipient", activeOrder.recipientId());
+            nbt.putInt("OrderRecipientX", activeOrder.recipientPosition().getX());
+            nbt.putInt("OrderRecipientY", activeOrder.recipientPosition().getY());
+            nbt.putInt("OrderRecipientZ", activeOrder.recipientPosition().getZ());
+            nbt.putLong("OrderExpiresAt", activeOrder.expiresAt());
         }
     }
 
@@ -83,8 +89,15 @@ public class CafeCourierEntity extends PathAwareEntity {
     protected void readCustomDataFromNbt(NbtCompound nbt) {
         super.readCustomDataFromNbt(nbt);
         ticksUntilNextOrder = nbt.getInt("TicksUntilNextOrder");
-        if (nbt.contains("OrderItem")) {
-            activeOrder = new CourierOrder(nbt.getString("OrderItem"), nbt.getInt("OrderCount"), nbt.getLong("OrderReward"));
+        if (nbt.contains("OrderItem") && nbt.containsUuid("OrderRecipient")
+                && nbt.contains("OrderRecipientX") && nbt.contains("OrderRecipientY")
+                && nbt.contains("OrderRecipientZ") && nbt.contains("OrderExpiresAt")) {
+            activeOrder = new CourierOrder(
+                    nbt.getString("OrderItem"), nbt.getInt("OrderCount"), nbt.getLong("OrderReward"),
+                    nbt.getUuid("OrderRecipient"),
+                    new net.minecraft.util.math.BlockPos(nbt.getInt("OrderRecipientX"),
+                            nbt.getInt("OrderRecipientY"), nbt.getInt("OrderRecipientZ")),
+                    nbt.getLong("OrderExpiresAt"));
             setGlowing(true);
         }
     }
@@ -102,10 +115,15 @@ public class CafeCourierEntity extends PathAwareEntity {
         ServerWorld sw = (ServerWorld) this.getWorld();
         long now = sw.getTime();
 
+        if (activeOrder != null && activeOrder.expired(now)) {
+            Moderncraft.LOGGER.info("Cafe courier order expired: {}", activeOrder.itemId());
+            completeOrder();
+        }
+
         if (activeOrder == null) {
             ticksUntilNextOrder--;
             if (ticksUntilNextOrder <= 0) {
-                activeOrder = generateOrder(sw.random);
+                activeOrder = generateOrder(sw);
                 if (activeOrder != null) {
                     this.setGlowing(true);
                     Moderncraft.LOGGER.info("Cafe courier issued order: {} x{} for {} M$",
@@ -132,7 +150,7 @@ public class CafeCourierEntity extends PathAwareEntity {
         }
     }
 
-    private CourierOrder generateOrder(Random random) {
+    private CourierOrder generateOrder(ServerWorld world) {
         var cats = com.moderncraft.economy.price.PriceCatalog.INSTANCE.categories();
         if (cats.isEmpty()) return null;
         List<com.moderncraft.economy.price.ItemPrice> candidates = new ArrayList<>();
@@ -141,11 +159,19 @@ public class CafeCourierEntity extends PathAwareEntity {
                 if (p.sell() > 0 && !p.id().endsWith("_spawn_egg")) candidates.add(p);
             }
         }
-        if (candidates.isEmpty()) return null;
-        var pick = candidates.get(random.nextInt(candidates.size()));
-        int count = 1 + random.nextInt(7);
-        long reward = Math.max(1L, (long)(pick.sell() * count * 1.5));
-        return new CourierOrder(pick.id(), count, reward);
+        List<VillagerEntity> recipients = world.getEntitiesByClass(
+                VillagerEntity.class,
+                this.getBoundingBox().expand(96.0),
+                villager -> !villager.isAiDisabled());
+        if (candidates.isEmpty() || recipients.isEmpty()) return null;
+
+        var pick = candidates.get(world.random.nextInt(candidates.size()));
+        VillagerEntity recipient = recipients.get(world.random.nextInt(recipients.size()));
+        int count = 1 + world.random.nextInt(7);
+        long reward = Math.max(1L, (long) (pick.sell() * count * 1.5));
+        long expiresAt = world.getTime() + 20L * 60L * 10L; // ten minutes
+        return new CourierOrder(pick.id(), count, reward, recipient.getUuid(),
+                recipient.getBlockPos().toImmutable(), expiresAt);
     }
 
     @Override
@@ -156,7 +182,8 @@ public class CafeCourierEntity extends PathAwareEntity {
             sp.sendMessage(Text.literal("The courier has no open orders. Check back soon."), true);
         } else {
             sp.sendMessage(Text.literal("Parcel: " + activeOrder.count() + " × "
-                    + displayNameOf(activeOrder.itemId()) + ". Deliver it to a villager within the village. Reward: "
+                    + displayNameOf(activeOrder.itemId()) + ". Deliver it to the assigned resident near "
+                    + activeOrder.recipientPosition().toShortString() + ". Reward: "
                     + activeOrder.reward() + " M$."), false);
         }
         return ActionResult.CONSUME;
