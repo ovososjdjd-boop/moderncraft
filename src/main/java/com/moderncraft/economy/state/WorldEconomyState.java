@@ -71,9 +71,26 @@ public final class WorldEconomyState extends PersistentState {
         return List.copyOf(pendingOrders.getOrDefault(playerId, List.of()));
     }
 
+    public boolean canAcceptOrder(UUID playerId, int additionalCount) {
+        if (additionalCount <= 0) return false;
+        long current = pendingOrders(playerId).stream().mapToLong(PurchaseOrder::count).sum();
+        return current + additionalCount <= 100_000L;
+    }
+
     public void addOrder(UUID playerId, PurchaseOrder order) {
-        if (!order.valid()) throw new IllegalArgumentException("Invalid purchase order");
-        pendingOrders.computeIfAbsent(playerId, ignored -> new ArrayList<>()).add(order);
+        if (!order.valid() || !canAcceptOrder(playerId, order.count())) {
+            throw new IllegalArgumentException("Invalid or oversized purchase order");
+        }
+        List<PurchaseOrder> orders = pendingOrders.computeIfAbsent(playerId, ignored -> new ArrayList<>());
+        for (int i = 0; i < orders.size(); i++) {
+            PurchaseOrder existing = orders.get(i);
+            if (existing.itemId().equals(order.itemId())) {
+                orders.set(i, new PurchaseOrder(existing.itemId(), existing.count() + order.count()));
+                markDirty();
+                return;
+            }
+        }
+        orders.add(order);
         markDirty();
     }
 

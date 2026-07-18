@@ -42,6 +42,11 @@ public class FactoryScreen extends Screen {
         rebuildButtons();
     }
 
+    public void refresh() {
+        clearChildren();
+        init();
+    }
+
     public static void onState(FactoryState state) {
         lastState = state;
     }
@@ -108,7 +113,7 @@ public class FactoryScreen extends Screen {
 
         // Produced items.
         ctx.drawText(this.textRenderer, "Produced this shift:", 20, 110,
-                Formatting.WHITE, false);
+                0xFFFFFFFF, true);
         int x = 20, y = 130;
         for (int i = 0; i < lastState.producedIds.size(); i++) {
             String idStr = lastState.producedIds.get(i);

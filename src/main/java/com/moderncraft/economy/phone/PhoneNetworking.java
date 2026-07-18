@@ -176,6 +176,11 @@ public final class PhoneNetworking {
                 sendError(player, "Item id not in registry: " + id);
                 return;
             }
+            var state = com.moderncraft.economy.state.WorldEconomyState.get(server);
+            if (!state.canAcceptOrder(player.getUuid(), count)) {
+                sendError(player, "Your pickup order queue is full. Collect existing orders first.");
+                return;
+            }
             long total = (long) price.buy() * count;
             var result = com.moderncraft.economy.state.EconomyService.debitWallet(
                     server, player.getUuid(), total);
@@ -191,7 +196,6 @@ public final class PhoneNetworking {
             // Purchases are paid for immediately but remain at the pickup point.
             // This prevents remote buying from becoming an inventory teleport and
             // gives the delivery system a real economic role.
-            var state = com.moderncraft.economy.state.WorldEconomyState.get(server);
             state.addOrder(player.getUuid(), new com.moderncraft.economy.state.PurchaseOrder(id, count));
             sendInfo(player, "Order placed: " + count + " × " + price.displayName()
                     + ". Collect it at a Pickup Point.");

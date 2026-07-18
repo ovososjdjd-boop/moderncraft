@@ -234,7 +234,10 @@ public final class PickupPointNetworking {
             for (var order : orders) {
                 Identifier itemId = Identifier.tryParse(order.itemId());
                 Item item = itemId == null ? null : Registries.ITEM.get(itemId);
-                if (item == null) continue;
+                if (item == null) {
+                    state.addOrder(player.getUuid(), order);
+                    continue;
+                }
                 ItemStack stack = new ItemStack(item, order.count());
                 player.getInventory().insertStack(stack);
                 int received = order.count() - stack.getCount();

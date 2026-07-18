@@ -17,8 +17,9 @@ import net.minecraft.world.World;
 /**
  * The "Pickup Point" building — a counterpart to the phone's catalog.
  * <p>
- * Players drop items into it via the GUI; items disappear; the
- * {@code sell} price from the price catalog is credited to the player's wallet.
+ * Players collect paid phone orders and sell inventory items through the GUI;
+ * the server validates every transaction and credits the {@code sell} price to
+ * the player's wallet.
  * The block is just a marker — the real logic is in {@link PickupPointBlockEntity}
  * and the network packets.
  * <p>

@@ -6,6 +6,7 @@ import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
 import net.minecraft.item.Items;
 import net.minecraft.nbt.NbtCompound;
+import net.minecraft.registry.RegistryWrapper;
 import net.minecraft.particle.ParticleTypes;
 import net.minecraft.registry.Registries;
 import net.minecraft.server.world.ServerWorld;
@@ -165,8 +166,8 @@ public class FactoryBlockEntity extends BlockEntity {
     // --- persistence --------------------------------------------------------
 
     @Override
-    public void writeNbt(NbtCompound nbt) {
-        super.writeNbt(nbt);
+    public void writeNbt(NbtCompound nbt, RegistryWrapper.WrapperLookup lookup) {
+        super.writeNbt(nbt, lookup);
         nbt.putBoolean("structureValid", structureValid);
         nbt.putInt("shiftTicks", shiftTicks);
         nbt.putInt("ticksToNext", ticksToNext);
@@ -182,8 +183,8 @@ public class FactoryBlockEntity extends BlockEntity {
     }
 
     @Override
-    public void readNbt(NbtCompound nbt) {
-        super.readNbt(nbt);
+    public void readNbt(NbtCompound nbt, RegistryWrapper.WrapperLookup lookup) {
+        super.readNbt(nbt, lookup);
         this.structureValid = nbt.getBoolean("structureValid");
         this.shiftTicks = nbt.getInt("shiftTicks");
         this.ticksToNext = nbt.getInt("ticksToNext");

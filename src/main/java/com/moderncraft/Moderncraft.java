@@ -23,7 +23,7 @@ import com.moderncraft.economy.stock.StockNetworking;
 import com.moderncraft.economy.village.VillageJoinHook;
 import net.fabricmc.api.ModInitializer;
 import net.fabricmc.fabric.api.resource.ResourceManagerHelper;
-import net.minecraft.server.packs.PackType;
+import net.minecraft.resource.ResourceType;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -56,7 +56,7 @@ public final class Moderncraft implements ModInitializer {
         PlayerJoinHandler.register();
         VillageJoinHook.register();
         CourierJobHandler.register();
-        ResourceManagerHelper.get(PackType.SERVER_DATA).registerReloadListener(
+        ResourceManagerHelper.get(ResourceType.SERVER_DATA).registerReloadListener(
                 PriceCatalog.newReloadListener());
 
         // Network: phone, pickup point, factory, bank, stock.
