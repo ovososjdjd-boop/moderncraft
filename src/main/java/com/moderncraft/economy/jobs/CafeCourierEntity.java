@@ -184,7 +184,9 @@ public class CafeCourierEntity extends PathAwareEntity {
             sp.sendMessage(Text.literal("Parcel: " + activeOrder.count() + " × "
                     + displayNameOf(activeOrder.itemId()) + ". Deliver it to the assigned resident near "
                     + activeOrder.recipientPosition().toShortString() + ". Reward: "
-                    + activeOrder.reward() + " M$."), false);
+                    + activeOrder.reward() + " M$. Deadline: "
+                    + Math.max(0L, (activeOrder.expiresAt() - this.getWorld().getTime()) / 20L)
+                    + " seconds."), false);
         }
         return ActionResult.CONSUME;
     }
