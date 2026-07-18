@@ -37,17 +37,30 @@ public class FactoryBlockEntity extends BlockEntity {
     public static final int TICK_INTERVAL = 100; // 5 seconds
     public static final float PRODUCTION_CHANCE = 0.65f;
 
-    /** Possible outputs the factory can produce. Weighted equally. */
-    public static final List<Item> POSSIBLE_OUTPUTS = List.of(
-            Items.REDSTONE,
-            Items.REDSTONE_TORCH,
-            Items.REPEATER,
-            Items.COMPARATOR,
-            Items.PISTON,
-            Items.STICKY_PISTON,
-            Items.OBSERVER,
-            Items.HOPPER
+    /** Production recipes. The weights make basic components common and complex parts rare. */
+    public static final List<FactoryRecipe> RECIPES = List.of(
+            new FactoryRecipe(Items.REDSTONE, 2, 5, 30),
+            new FactoryRecipe(Items.REDSTONE_TORCH, 1, 3, 20),
+            new FactoryRecipe(Items.REPEATER, 1, 2, 14),
+            new FactoryRecipe(Items.COMPARATOR, 1, 2, 10),
+            new FactoryRecipe(Items.PISTON, 1, 2, 8),
+            new FactoryRecipe(Items.STICKY_PISTON, 1, 2, 6),
+            new FactoryRecipe(Items.OBSERVER, 1, 1, 5),
+            new FactoryRecipe(Items.HOPPER, 1, 1, 4)
     );
+
+    private static int recipeWeightTotal() {
+        return RECIPES.stream().mapToInt(FactoryRecipe::weight).sum();
+    }
+
+    private static FactoryRecipe chooseRecipe(java.util.Random random) {
+        int roll = random.nextInt(recipeWeightTotal());
+        for (FactoryRecipe recipe : RECIPES) {
+            roll -= recipe.weight();
+            if (roll < 0) return recipe;
+        }
+        return RECIPES.get(RECIPES.size() - 1);
+    }
 
     private boolean structureValid = false;
     private UUID shiftOwner = null;
@@ -99,8 +112,9 @@ public class FactoryBlockEntity extends BlockEntity {
         if (be.ticksToNext <= 0) {
             be.ticksToNext = TICK_INTERVAL;
             if (world.random.nextFloat() < PRODUCTION_CHANCE) {
-                Item output = POSSIBLE_OUTPUTS.get(world.random.nextInt(POSSIBLE_OUTPUTS.size()));
-                be.produced.add(new ItemStack(output, 1 + world.random.nextInt(2)));
+                FactoryRecipe recipe = chooseRecipe(world.random);
+                int amount = recipe.minCount() + world.random.nextInt(recipe.maxCount() - recipe.minCount() + 1);
+                be.produced.add(new ItemStack(recipe.output(), amount));
             }
             // Cosmetic: gear rotates, smoke particles.
             BlockPos gearPos = pos.up();
