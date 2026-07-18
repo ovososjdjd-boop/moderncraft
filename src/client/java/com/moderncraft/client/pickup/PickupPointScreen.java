@@ -1,5 +1,6 @@
 package com.moderncraft.client.pickup;
 
+import com.moderncraft.client.ModerncraftGui;
 import com.moderncraft.client.phone.PhoneClientState;
 import com.moderncraft.economy.pickup.PickupPointNetworking;
 import com.moderncraft.economy.price.PriceCatalogView;
@@ -31,6 +32,7 @@ public class PickupPointScreen extends Screen {
 
     private final List<Entry> entries = new ArrayList<>();
     private int scroll = 0;
+    private int tab = 0; // 0 = paid orders, 1 = sell inventory
 
     public PickupPointScreen() {
         super(Text.literal("Pickup Point"));
@@ -42,9 +44,14 @@ public class PickupPointScreen extends Screen {
         rebuildButtons();
     }
 
+    public void refresh() {
+        clearChildren();
+        init();
+    }
+
     private void rebuildEntries() {
         entries.clear();
-        if (this.client == null || this.client.player == null) return;
+        if (tab == 0 || this.client == null || this.client.player == null) return;
         var inv = this.client.player.getInventory();
 
         // Aggregate by item id so we get one row per item type.
@@ -83,12 +90,27 @@ public class PickupPointScreen extends Screen {
         }
     }
 
+    private void switchTab(int nextTab) {
+        tab = nextTab;
+        scroll = 0;
+        clearChildren();
+        init();
+    }
+
     private void rebuildButtons() {
-        // Header buttons: Sell all priced + Back.
-        addDrawableChild(ButtonWidget.builder(
-                Text.literal("Sell All Priced").formatted(Formatting.GOLD),
-                b -> PickupPointNetworking.sendSellAll())
-                .dimensions(this.width / 2 - 100, 8, 100, 20).build());
+        addDrawableChild(ButtonWidget.builder(Text.literal("Orders"), b -> switchTab(0))
+                .dimensions(78, 8, 70, 20).build());
+        addDrawableChild(ButtonWidget.builder(Text.literal("Sell"), b -> switchTab(1))
+                .dimensions(152, 8, 60, 20).build());
+        if (tab == 0) {
+            addDrawableChild(ButtonWidget.builder(Text.literal("Collect all").formatted(Formatting.AQUA),
+                    b -> PickupPointNetworking.sendCollect())
+                    .dimensions(this.width - 170, 8, 100, 20).build());
+        } else {
+            addDrawableChild(ButtonWidget.builder(Text.literal("Sell all").formatted(Formatting.GOLD),
+                    b -> PickupPointNetworking.sendSellAll())
+                    .dimensions(this.width - 170, 8, 100, 20).build());
+        }
         addDrawableChild(ButtonWidget.builder(Text.literal("Back"), b -> close())
                 .dimensions(8, this.height - 26, 60, 20).build());
 
@@ -141,13 +163,17 @@ public class PickupPointScreen extends Screen {
 
     @Override
     public void render(DrawContext ctx, int mouseX, int mouseY, float delta) {
-        ctx.fill(0, 0, this.width, this.height, 0xFF101418);
-        ctx.fill(0, 0, this.width, 32, 0xFF202830);
-        ctx.drawText(this.textRenderer, "Pickup Point", 8, 12, 0xFFFFFFFF, true);
-        String bal = "Wallet: " + fmt(PhoneClientState.wallet) + " M$";
-        ctx.drawText(this.textRenderer, bal, this.width - this.textRenderer.getWidth(bal) - 8, 12,
-                0xFFA0E0A0, true);
-
+        ModerncraftGui.background(ctx, this.width, this.height);
+        ModerncraftGui.header(ctx, this.textRenderer, this.width, tab == 0 ? "Pickup Point · Orders" : "Pickup Point · Sell",
+                ModerncraftGui.money(PhoneClientState.wallet));
+        if (tab == 0) {
+            renderOrders(ctx);
+            super.render(ctx, mouseX, mouseY, delta);
+            return;
+        }
+        int orderItems = PhoneClientState.pendingOrders.stream().mapToInt(PhoneClientState.PendingOrder::count).sum();
+        String orders = "Paid orders: " + orderItems;
+        ctx.drawText(this.textRenderer, orders, 8, 28, 0xFF80C0E0, true);
         // Rows.
         int rowH = 26;
         int top = 40;
@@ -172,6 +198,24 @@ public class PickupPointScreen extends Screen {
                     e.priced ? 0xFF80C0E0 : 0xFF606060, true);
         }
         super.render(ctx, mouseX, mouseY, delta);
+    }
+
+    private void renderOrders(DrawContext ctx) {
+        int total = PhoneClientState.pendingOrders.stream().mapToInt(PhoneClientState.PendingOrder::count).sum();
+        ctx.drawText(this.textRenderer, total == 0 ? "No paid orders" : "Paid orders waiting: " + total,
+                14, 48, total == 0 ? ModerncraftGui.MUTED : ModerncraftGui.WARNING, true);
+        int y = 68;
+        for (PhoneClientState.PendingOrder order : PhoneClientState.pendingOrders) {
+            if (y > this.height - 54) break;
+            ItemStack icon = new ItemStack(PhoneClientState.itemOf(order.itemId()));
+            ModerncraftGui.panel(ctx, 12, y, this.width - 24, 34);
+            ctx.drawItem(icon, 20, y + 4);
+            ctx.drawText(this.textRenderer, icon.getName().getString() + " × " + order.count(),
+                    52, y + 6, ModerncraftGui.TEXT, true);
+            ctx.drawText(this.textRenderer, "Paid · collect at this Pickup Point",
+                    52, y + 19, ModerncraftGui.SELL, false);
+            y += 40;
+        }
     }
 
     private static String fmt(long v) {

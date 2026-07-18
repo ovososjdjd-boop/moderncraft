@@ -41,10 +41,15 @@ public record PlayerAccount(long wallet, long bank, long totalEarned, long total
     }
 
     public PlayerAccount withEarned(long delta) {
-        return new PlayerAccount(wallet, bank, totalEarned + delta, totalSpent);
+        return new PlayerAccount(wallet, bank, saturatingAdd(totalEarned, delta), totalSpent);
     }
 
     public PlayerAccount withSpent(long delta) {
-        return new PlayerAccount(wallet, bank, totalEarned, totalSpent + delta);
+        return new PlayerAccount(wallet, bank, totalEarned, saturatingAdd(totalSpent, delta));
+    }
+
+    private static long saturatingAdd(long left, long right) {
+        if (right > 0 && left > Long.MAX_VALUE - right) return Long.MAX_VALUE;
+        return left + right;
     }
 }

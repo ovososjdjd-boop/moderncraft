@@ -30,13 +30,15 @@ public final class FactoryToast {
                                 payload.shiftTicks(),
                                 payload.shiftDuration(),
                                 payload.producedIds(),
-                                payload.producedCounts()
+                                payload.producedCounts(),
+                                payload.inputIds(),
+                                payload.inputCounts()
                         );
                         FactoryScreen.onState(s);
                         // If the screen is currently open, rebuild the buttons
                         // so the Start/End shift button reflects the new state.
                         if (MinecraftClient.getInstance().currentScreen instanceof FactoryScreen fs) {
-                            fs.init();
+                            fs.refresh();
                         }
                     });
                 });

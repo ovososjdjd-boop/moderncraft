@@ -33,7 +33,9 @@ public final class EconomyService {
         if (amount <= 0) return Result.INVALID_AMOUNT;
         WorldEconomyState state = WorldEconomyState.get(server);
         PlayerAccount current = state.getOrCreate(playerId);
-        state.put(playerId, current.withWallet(current.wallet() + amount).withEarned(amount));
+        state.put(playerId, current.withWallet(saturatingAdd(current.wallet(), amount))
+                .withEarned(amount));
+        record(server, playerId, "credit", amount, "Income");
         return Result.OK;
     }
 
@@ -44,6 +46,7 @@ public final class EconomyService {
         PlayerAccount current = state.getOrCreate(playerId);
         if (current.wallet() < amount) return Result.NOT_ENOUGH_WALLET;
         state.put(playerId, current.withWallet(current.wallet() - amount).withSpent(amount));
+        record(server, playerId, "debit", amount, "Payment");
         return Result.OK;
     }
 
@@ -52,9 +55,11 @@ public final class EconomyService {
         WorldEconomyState state = WorldEconomyState.get(server);
         PlayerAccount current = state.getOrCreate(playerId);
         if (current.wallet() < amount) return Result.NOT_ENOUGH_WALLET;
+        if (current.bank() > Long.MAX_VALUE - amount) return Result.INVALID_AMOUNT;
         state.put(playerId, current
                 .withWallet(current.wallet() - amount)
                 .withBank(current.bank() + amount));
+        record(server, playerId, "deposit", amount, "Wallet to bank");
         return Result.OK;
     }
 
@@ -63,9 +68,11 @@ public final class EconomyService {
         WorldEconomyState state = WorldEconomyState.get(server);
         PlayerAccount current = state.getOrCreate(playerId);
         if (current.bank() < amount) return Result.NOT_ENOUGH_BANK;
+        if (current.wallet() > Long.MAX_VALUE - amount) return Result.INVALID_AMOUNT;
         state.put(playerId, current
                 .withBank(current.bank() - amount)
                 .withWallet(current.wallet() + amount));
+        record(server, playerId, "withdraw", amount, "Bank to wallet");
         return Result.OK;
     }
 
@@ -81,8 +88,25 @@ public final class EconomyService {
         PlayerAccount sender = state.getOrCreate(from);
         if (sender.wallet() < amount) return Result.NOT_ENOUGH_WALLET;
         PlayerAccount receiver = state.getOrCreate(to);
+        if (receiver.wallet() > Long.MAX_VALUE - amount) return Result.INVALID_AMOUNT;
         state.put(from, sender.withWallet(sender.wallet() - amount).withSpent(amount));
         state.put(to, receiver.withWallet(receiver.wallet() + amount).withEarned(amount));
+        record(server, from, "transfer_out", amount, "Player transfer");
+        record(server, to, "transfer_in", amount, "Player transfer");
         return Result.OK;
+    }
+
+    public static void recordEvent(MinecraftServer server, UUID playerId, String type, long amount, String note) {
+        record(server, playerId, type, amount, note);
+    }
+
+    private static void record(MinecraftServer server, UUID playerId, String type, long amount, String note) {
+        long time = server.getOverworld() == null ? 0L : server.getOverworld().getTime();
+        WorldEconomyState.get(server).appendLedger(playerId, new EconomyLedgerEntry(type, amount, time, note));
+    }
+
+    private static long saturatingAdd(long left, long right) {
+        if (right > 0 && left > Long.MAX_VALUE - right) return Long.MAX_VALUE;
+        return left + right;
     }
 }

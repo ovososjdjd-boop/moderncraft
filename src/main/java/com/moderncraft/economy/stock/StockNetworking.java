@@ -31,7 +31,10 @@ import java.util.List;
  */
 public final class StockNetworking {
 
+    private static boolean commonRegistered = false;
+
     public static final Identifier OPEN_ID = Moderncraft.id("stock_open");
+    public static final Identifier OPEN_REQUEST_ID = Moderncraft.id("stock_open_request");
     public static final Identifier BUY_ID = Moderncraft.id("stock_buy");
     public static final Identifier SELL_ID = Moderncraft.id("stock_sell");
 
@@ -73,6 +76,12 @@ public final class StockNetworking {
         @Override public Id<? extends CustomPayload> getId() { return ID; }
     }
 
+    public record OpenRequestPayload() implements CustomPayload {
+        public static final CustomPayload.Id<OpenRequestPayload> ID = new CustomPayload.Id<>(OPEN_REQUEST_ID);
+        public static final PacketCodec<PacketByteBuf, OpenRequestPayload> CODEC = PacketCodec.unit(new OpenRequestPayload());
+        @Override public Id<? extends CustomPayload> getId() { return ID; }
+    }
+
     public record BuySharesPayload(String companyId, int count) implements CustomPayload {
         public static final CustomPayload.Id<BuySharesPayload> ID = new CustomPayload.Id<>(BUY_ID);
         public static final PacketCodec<PacketByteBuf, BuySharesPayload> CODEC =
@@ -100,17 +109,22 @@ public final class StockNetworking {
     }
 
     public static void registerCommon() {
+        if (commonRegistered) return;
+        commonRegistered = true;
         PayloadTypeRegistry.playS2C().register(OpenScreenPayload.ID, OpenScreenPayload.CODEC);
+        PayloadTypeRegistry.playC2S().register(OpenRequestPayload.ID, OpenRequestPayload.CODEC);
         PayloadTypeRegistry.playC2S().register(BuySharesPayload.ID, BuySharesPayload.CODEC);
         PayloadTypeRegistry.playC2S().register(SellSharesPayload.ID, SellSharesPayload.CODEC);
     }
 
     public static void registerServer() {
+        ServerPlayNetworking.registerGlobalReceiver(OpenRequestPayload.ID, (payload, ctx) -> sendOpen(ctx.player()));
+
         ServerPlayNetworking.registerGlobalReceiver(BuySharesPayload.ID, (payload, ctx) -> {
             ServerPlayerEntity player = ctx.player();
             MinecraftServer server = player.getServer();
-            if (payload.count() <= 0) {
-                PhoneNetworking.sendError(player, "Count must be positive.");
+            if (payload.count() <= 0 || payload.count() > 1_000_000) {
+                PhoneNetworking.sendError(player, "Count must be between 1 and 1,000,000.");
                 return;
             }
             StockMarketState m = StockMarketState.get(server);
@@ -129,7 +143,12 @@ public final class StockNetworking {
                 sendOpen(player);
                 return;
             }
-            m.buy(payload.companyId(), payload.count());
+            if (!m.buy(player.getUuid(), payload.companyId(), payload.count())) {
+                EconomyService.creditWallet(server, player.getUuid(), cost);
+                PhoneNetworking.sendError(player, "Could not record the share purchase.");
+                sendOpen(player);
+                return;
+            }
             PhoneNetworking.sendInfo(player, "Bought " + payload.count() + " shares of "
                     + c.displayName() + " for " + cost + " M$.");
             PhoneNetworking.syncBalances(player, server);
@@ -139,8 +158,8 @@ public final class StockNetworking {
         ServerPlayNetworking.registerGlobalReceiver(SellSharesPayload.ID, (payload, ctx) -> {
             ServerPlayerEntity player = ctx.player();
             MinecraftServer server = player.getServer();
-            if (payload.count() <= 0) {
-                PhoneNetworking.sendError(player, "Count must be positive.");
+            if (payload.count() <= 0 || payload.count() > 1_000_000) {
+                PhoneNetworking.sendError(player, "Count must be between 1 and 1,000,000.");
                 return;
             }
             StockMarketState m = StockMarketState.get(server);
@@ -149,7 +168,7 @@ public final class StockNetworking {
                 PhoneNetworking.sendError(player, "Unknown company: " + payload.companyId());
                 return;
             }
-            long proceeds = m.sell(payload.companyId(), payload.count());
+            long proceeds = m.sell(player.getUuid(), payload.companyId(), payload.count());
             if (proceeds == 0L) {
                 PhoneNetworking.sendError(player, "You don't own any shares of " + c.displayName() + ".");
                 sendOpen(player);
@@ -183,11 +202,15 @@ public final class StockNetworking {
             ids.add(c.id());
             names.add(c.displayName());
             prices.add(c.price());
-            shares.add(m.sharesOf(c.id()));
+            shares.add(m.sharesOf(player.getUuid(), c.id()));
         }
         var account = EconomyService.view(server, player.getUuid());
         ServerPlayNetworking.send(player, new OpenScreenPayload(
                 ids, names, prices, shares, account.wallet()));
+    }
+
+    public static void sendOpenRequest() {
+        ClientPlayNetworking.send(new OpenRequestPayload());
     }
 
     public static void sendBuy(String id, int count) {

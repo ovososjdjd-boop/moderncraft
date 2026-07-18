@@ -11,6 +11,7 @@ import com.moderncraft.economy.bank.BankNetworking;
 import com.moderncraft.economy.factory.FactoryBlocks;
 import com.moderncraft.economy.factory.FactoryNetworking;
 import com.moderncraft.economy.jobs.CourierEntities;
+import com.moderncraft.economy.jobs.CourierJobHandler;
 import com.moderncraft.economy.jobs.JobBlocks;
 import com.moderncraft.economy.jobs.LoaderEntities;
 import com.moderncraft.economy.phone.PhoneItems;
@@ -22,7 +23,7 @@ import com.moderncraft.economy.stock.StockNetworking;
 import com.moderncraft.economy.village.VillageJoinHook;
 import net.fabricmc.api.ModInitializer;
 import net.fabricmc.fabric.api.resource.ResourceManagerHelper;
-import net.minecraft.server.packs.PackType;
+import net.minecraft.resource.ResourceType;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -54,7 +55,8 @@ public final class Moderncraft implements ModInitializer {
         ModCommands.register();
         PlayerJoinHandler.register();
         VillageJoinHook.register();
-        ResourceManagerHelper.get(PackType.SERVER_DATA).registerReloadListener(
+        CourierJobHandler.register();
+        ResourceManagerHelper.get(ResourceType.SERVER_DATA).registerReloadListener(
                 PriceCatalog.newReloadListener());
 
         // Network: phone, pickup point, factory, bank, stock.
@@ -69,11 +71,6 @@ public final class Moderncraft implements ModInitializer {
         StockNetworking.registerCommon();
         StockNetworking.registerServer();
         PhoneItems.register();
-
-        // TODO:
-        // - Courier and loader jobs (placeable notice-board style is done; the
-        //   actual job mechanics are still TBD)
-        // - Polish on village buildings (textures, more variety)
 
         LOGGER.info("[moderncraft] ready. Full village, all buildings, economy, catalog online.");
     }

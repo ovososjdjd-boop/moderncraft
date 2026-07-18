@@ -144,7 +144,19 @@ public final class PriceCatalog {
                         }
                         for (RawEntry e : raw) {
                             String normId = normaliseId(e.id);
-                            ItemPrice p = new ItemPrice(normId, cat.id(), e.buy, e.sell, e.name);
+                            int buy = Math.max(0, e.buy);
+                            int sell = Math.max(0, e.sell);
+                            if (buy == 0 && sell > 0) {
+                                Moderncraft.LOGGER.warn("Invalid zero-buy price for {}; disabling sales.", normId);
+                                sell = 0;
+                            } else if (buy > 0 && sell >= buy) {
+                                Moderncraft.LOGGER.warn("Invalid spread for {} (buy={}, sell={}); clamping sell price.",
+                                        normId, buy, sell);
+                                sell = buy - 1;
+                            }
+                            ItemPrice p = (e.name == null || e.name.isBlank())
+                                    ? new ItemPrice(normId, cat.id(), buy, sell)
+                                    : new ItemPrice(normId, cat.id(), buy, sell, e.name);
                             flatById.put(normId, p);
                             bucket.add(p);
                         }

@@ -1,9 +1,11 @@
 package com.moderncraft.client.stock;
 
+import com.moderncraft.client.ModerncraftGui;
 import com.moderncraft.economy.stock.StockNetworking;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.gui.screen.Screen;
 import net.minecraft.client.gui.widget.ButtonWidget;
+import net.minecraft.client.gui.widget.TextFieldWidget;
 import net.minecraft.text.Text;
 import net.minecraft.util.Formatting;
 import net.minecraft.util.Identifier;
@@ -20,6 +22,7 @@ public class StockScreen extends Screen {
 
     private final List<Company> companies = new ArrayList<>();
     private long wallet = 0L;
+    private TextFieldWidget quantityField;
 
     public StockScreen() {
         super(Text.literal("Stock Exchange"));
@@ -36,10 +39,18 @@ public class StockScreen extends Screen {
 
     @Override
     protected void init() {
+        quantityField = new TextFieldWidget(this.textRenderer, this.width / 2 - 45, 36, 90, 20,
+                Text.literal("Shares"));
+        quantityField.setMaxLength(7);
+        quantityField.setText("1");
+        addSelectableChild(quantityField);
+        addDrawableChild(ButtonWidget.builder(Text.literal("Max affordable"), b -> {
+            quantityField.setText(Long.toString(Math.max(1L, wallet / Math.max(1L, companies.isEmpty() ? 1L : companies.get(0).price))));
+        }).dimensions(this.width / 2 + 50, 36, 100, 20).build());
         addDrawableChild(ButtonWidget.builder(Text.literal("Back"), b -> close())
                 .dimensions(8, this.height - 26, 60, 20).build());
         // Per-company rows.
-        int top = 60;
+        int top = 70;
         int rowH = 36;
         for (int i = 0; i < companies.size(); i++) {
             Company c = companies.get(i);
@@ -47,28 +58,27 @@ public class StockScreen extends Screen {
             int idx = i;
             // Buy 1
             addDrawableChild(ButtonWidget.builder(Text.literal("Buy 1").formatted(Formatting.GREEN),
-                    b -> StockNetworking.sendBuy(c.id, 1))
+                    b -> StockNetworking.sendBuy(c.id, quantity()))
                     .dimensions(this.width - 130, y, 50, 18).build());
             // Sell 1
             addDrawableChild(ButtonWidget.builder(Text.literal("Sell 1").formatted(Formatting.AQUA),
-                    b -> StockNetworking.sendSell(c.id, 1))
+                    b -> StockNetworking.sendSell(c.id, quantity()))
                     .dimensions(this.width - 75, y, 50, 18).build());
         }
     }
 
+    private int quantity() {
+        try { return Math.max(1, Math.min(1_000_000, Integer.parseInt(quantityField.getText().trim()))); }
+        catch (NumberFormatException ignored) { return 1; }
+    }
+
     @Override
     public void render(DrawContext ctx, int mouseX, int mouseY, float delta) {
-        ctx.fill(0, 0, this.width, this.height, 0xFF101418);
-        ctx.fill(0, 0, this.width, 32, 0xFF202830);
-        ctx.drawText(this.textRenderer, "Stock Exchange", 8, 12, 0xFFFFFFFF, true);
-        String w = "Wallet: " + fmt(wallet) + " M$";
-        ctx.drawText(this.textRenderer, w, this.width - this.textRenderer.getWidth(w) - 8, 12,
-                0xFFA0E0A0, true);
-        // Subheader
-        ctx.drawText(this.textRenderer,
-                "Buy low, sell high. Prices drift on their own every 20 minutes.",
-                this.width / 2 - 130, 42, 0xFF808080, true);
-        int top = 60;
+        ModerncraftGui.background(ctx, this.width, this.height);
+        ModerncraftGui.header(ctx, this.textRenderer, this.width, "Stock Exchange",
+                ModerncraftGui.money(wallet));
+        ctx.drawText(this.textRenderer, "Shares to trade:", this.width / 2 - 150, 42, 0xFF91A0AE, true);
+        int top = 70;
         int rowH = 36;
         for (int i = 0; i < companies.size(); i++) {
             Company c = companies.get(i);

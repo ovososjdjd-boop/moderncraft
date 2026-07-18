@@ -33,9 +33,13 @@ import java.util.Optional;
  */
 public final class PickupPointNetworking {
 
+    private static boolean commonRegistered = false;
+
     public static final Identifier OPEN_ID = Moderncraft.id("pickup_open");
     public static final Identifier SELL_ID = Moderncraft.id("pickup_sell");
     public static final Identifier SELL_ALL_ID = Moderncraft.id("pickup_sell_all");
+    public static final Identifier COLLECT_ID = Moderncraft.id("pickup_collect");
+    public static final Identifier ORDERS_ID = Moderncraft.id("pickup_orders");
 
     public record OpenScreenPayload(BlockPos pos) implements CustomPayload {
         public static final CustomPayload.Id<OpenScreenPayload> ID = new CustomPayload.Id<>(OPEN_ID);
@@ -67,16 +71,39 @@ public final class PickupPointNetworking {
         @Override public Id<? extends CustomPayload> getId() { return ID; }
     }
 
+    public record CollectOrdersPayload() implements CustomPayload {
+        public static final CustomPayload.Id<CollectOrdersPayload> ID = new CustomPayload.Id<>(COLLECT_ID);
+        public static final PacketCodec<PacketByteBuf, CollectOrdersPayload> CODEC =
+                PacketCodec.unit(new CollectOrdersPayload());
+        @Override public Id<? extends CustomPayload> getId() { return ID; }
+    }
+
+    /** Compact client sync: one line per order, item id and count separated by '|'. */
+    public record PendingOrdersPayload(String encoded) implements CustomPayload {
+        public static final CustomPayload.Id<PendingOrdersPayload> ID = new CustomPayload.Id<>(ORDERS_ID);
+        public static final PacketCodec<PacketByteBuf, PendingOrdersPayload> CODEC =
+                PacketCodec.of((p, buf) -> buf.writeString(p.encoded), buf -> new PendingOrdersPayload(buf.readString(32767)));
+        @Override public Id<? extends CustomPayload> getId() { return ID; }
+    }
+
     public static void registerCommon() {
+        if (commonRegistered) return;
+        commonRegistered = true;
         PayloadTypeRegistry.playS2C().register(OpenScreenPayload.ID, OpenScreenPayload.CODEC);
         PayloadTypeRegistry.playC2S().register(SellItemPayload.ID, SellItemPayload.CODEC);
         PayloadTypeRegistry.playC2S().register(SellAllPayload.ID, SellAllPayload.CODEC);
+        PayloadTypeRegistry.playC2S().register(CollectOrdersPayload.ID, CollectOrdersPayload.CODEC);
+        PayloadTypeRegistry.playS2C().register(PendingOrdersPayload.ID, PendingOrdersPayload.CODEC);
     }
 
     public static void registerServer() {
         ServerPlayNetworking.registerGlobalReceiver(SellItemPayload.ID, (payload, ctx) -> {
             ServerPlayerEntity player = ctx.player();
             MinecraftServer server = player.getServer();
+            if (findPickupNear(player) == null) {
+                PhoneNetworking.sendError(player, "You must be at a Pickup Point to sell items.");
+                return;
+            }
 
             String idStr = payload.itemId();
             int wanted = Math.max(1, payload.count());
@@ -130,6 +157,8 @@ public final class PickupPointNetworking {
 
             long earned = (long) price.sell() * actuallySold;
             com.moderncraft.economy.state.EconomyService.creditWallet(server, player.getUuid(), earned);
+            com.moderncraft.economy.state.EconomyService.recordEvent(server, player.getUuid(), "sale", earned,
+                    actuallySold + " × " + price.displayName());
 
             // Bump the block-entity's totalSold stat if we can find it.
             BlockPos pos = findPickupNear(player);
@@ -147,6 +176,10 @@ public final class PickupPointNetworking {
         ServerPlayNetworking.registerGlobalReceiver(SellAllPayload.ID, (payload, ctx) -> {
             ServerPlayerEntity player = ctx.player();
             MinecraftServer server = player.getServer();
+            if (findPickupNear(player) == null) {
+                PhoneNetworking.sendError(player, "You must be at a Pickup Point to sell items.");
+                return;
+            }
 
             long totalEarned = 0L;
             int totalItems = 0;
@@ -173,6 +206,8 @@ public final class PickupPointNetworking {
                 return;
             }
             com.moderncraft.economy.state.EconomyService.creditWallet(server, player.getUuid(), totalEarned);
+            com.moderncraft.economy.state.EconomyService.recordEvent(server, player.getUuid(), "sale", totalEarned,
+                    "Bulk sale: " + totalItems + " items");
 
             BlockPos pos = findPickupNear(player);
             if (pos != null) {
@@ -183,6 +218,42 @@ public final class PickupPointNetworking {
 
             PhoneNetworking.sendInfo(player, "Bulk-sold " + totalItems + " items for " + totalEarned + " M$.");
             PhoneNetworking.syncBalances(player, server);
+        });
+
+        ServerPlayNetworking.registerGlobalReceiver(CollectOrdersPayload.ID, (payload, ctx) -> {
+            ServerPlayerEntity player = ctx.player();
+            MinecraftServer server = player.getServer();
+            if (findPickupNear(player) == null) {
+                PhoneNetworking.sendError(player, "You must be at a Pickup Point to collect orders.");
+                return;
+            }
+            var state = com.moderncraft.economy.state.WorldEconomyState.get(server);
+            var orders = state.takeOrders(player.getUuid());
+            if (orders.isEmpty()) {
+                PhoneNetworking.sendInfo(player, "You have no paid orders waiting at the Pickup Point.");
+                syncOrders(player, server);
+                return;
+            }
+            int delivered = 0;
+            for (var order : orders) {
+                Identifier itemId = Identifier.tryParse(order.itemId());
+                Item item = itemId == null ? null : Registries.ITEM.get(itemId);
+                if (item == null) {
+                    state.addOrder(player.getUuid(), order);
+                    continue;
+                }
+                ItemStack stack = new ItemStack(item, order.count());
+                player.getInventory().insertStack(stack);
+                int received = order.count() - stack.getCount();
+                delivered += received;
+                if (stack.getCount() > 0) {
+                    state.addOrder(player.getUuid(), new com.moderncraft.economy.state.PurchaseOrder(order.itemId(), stack.getCount()));
+                }
+            }
+            PhoneNetworking.sendInfo(player, delivered > 0
+                    ? "Collected " + delivered + " items from paid orders."
+                    : "Your inventory is full; orders remain at the Pickup Point.");
+            syncOrders(player, server);
         });
     }
 
@@ -229,5 +300,20 @@ public final class PickupPointNetworking {
 
     public static void sendOpen(ServerPlayerEntity player, BlockPos pos) {
         ServerPlayNetworking.send(player, new OpenScreenPayload(pos));
+        syncOrders(player, player.getServer());
+    }
+
+    public static void sendCollect() {
+        ClientPlayNetworking.send(new CollectOrdersPayload());
+    }
+
+    public static void syncOrders(ServerPlayerEntity player, MinecraftServer server) {
+        var orders = com.moderncraft.economy.state.WorldEconomyState.get(server).pendingOrders(player.getUuid());
+        StringBuilder encoded = new StringBuilder();
+        for (var order : orders) {
+            if (encoded.length() > 0) encoded.append(';');
+            encoded.append(order.itemId()).append('|').append(order.count());
+        }
+        ServerPlayNetworking.send(player, new PendingOrdersPayload(encoded.toString()));
     }
 }

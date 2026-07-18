@@ -2,31 +2,32 @@
 
 A Fabric mod for **Minecraft 1.21.1** that turns survival into a living economy. Vanilla villager trading is gone — everything goes through phones, banks, jobs and a stock exchange.
 
-The world starts empty. The first player to join a world gets a starter village generated near spawn, complete with working buildings and two NPCs.
+Vanilla villages remain in the world with their normal residents and behaviour. The first player who approaches each natural village triggers a one-time Moderncraft district next to it, complete with working buildings, jobs and NPCs.
 
 ## What you can do
 
-- **Right-click the phone** in your inventory to open your in-game device. Browse the catalog (1300+ items, 20 categories) and buy anything you can afford. Deposit / withdraw from your bank.
-- **Use the Pickup Point** to sell items from your inventory. Sell price is lower than buy price so the economy can't print money.
+- **Right-click the phone** in your inventory to open your in-game device. Browse the catalog (1300+ items, 20 categories) and place paid orders for anything you can afford. Orders are collected at a Pickup Point. Deposit / withdraw from your bank.
+- **Use the Pickup Point** to collect paid phone orders or sell items from your inventory. Sell price is lower than buy price so the economy can't print money.
 - **Work a shift at the Factory** (3 minutes). The factory produces redstone parts and pays you for each item, plus a completion bonus. Right-click the factory base to start.
-- **The Cafe Courier** (an NPC at the cafe) hands you delivery orders — bring the right item, get paid 1.5× sell price. He glows and emits particles while he has an order for you.
-- **The Loader** (an NPC at the loader depot) hands you heavy-block delivery orders. Bring iron blocks, gold blocks, obsidian, anvils or diamond blocks to a yellow Loader Target block on the plaza.
+- **The Cafe Courier** (an NPC at the cafe) hands you delivery orders — bring the right item and right-click a villager to deliver the parcel. You get paid 1.5× sell price. The courier glows and emits particles while he has an order.
+- **The Loader** (an NPC at the loader depot) hands you heavy-block and furniture delivery orders. Bring the requested load to a yellow Loader Target block on the plaza.
+- **Vanilla villager trading is disabled**. Villagers remain delivery destinations, but all buying and selling happens through Moderncraft systems.
 - **The Bank building** has the same deposit / withdraw UI as the phone, plus a 'branch lifetime deposits' stat.
 - **The Stock Exchange** lets you buy and sell shares in five companies (Logistics, RedstoneCo, Pickup Express, First M$ Bank, Industrial Foundry). Prices drift every 20 minutes.
 
-## Starter village layout
+## Moderncraft district layout
 
-When you first join a world, a 23×23 plaza is built near spawn with 9 buildings:
+When a natural village is discovered, a 23×23 district is built beside it with 9 functional locations:
 
 - **Factory** (north-west) — fully assembled, you can start a shift immediately
-- **Pickup Point** (north) — sell items here
-- **Loader Depot** (north-east) — talk to the loader NPC, deliver to yellow targets
+- **Pickup Point** (north) — collect phone orders and sell items here
+- **Loader Depot** (north-east) — talk to the loader NPC, deliver heavy loads or furniture to yellow targets
 - **Cafe** (west) — talk to the courier NPC
 - **Village Centre** (centre) — notice board
 - **Bank** (east) — same UI as the phone's bank app, with a stat
 - **House** (south-west, south, south-east) — three small player houses
 
-If you don't like where the village spawned, run `/village here` (operator) to regenerate it at your position.
+Use `/village status` to see how many village districts have been generated. Operators can use `/village here` or `/village regen` for controlled testing.
 
 ## Commands
 

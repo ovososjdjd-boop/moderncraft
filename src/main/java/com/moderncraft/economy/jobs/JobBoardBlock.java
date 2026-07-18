@@ -55,10 +55,8 @@ public class JobBoardBlock extends BlockWithEntity {
                              PlayerEntity player, Hand hand, BlockHitResult hit) {
         if (world.isClient) return ActionResult.SUCCESS;
         String message = switch (role) {
-            case "cafe" -> "Cafe — couriers pick up delivery orders here. " +
-                    "The courier job is coming in a future update.";
-            case "loader" -> "Loader Depot — loaders carry heavy blocks and furniture " +
-                    "to villagers. The loader job is coming in a future update.";
+            case "cafe" -> "Cafe — take a courier order from the Courier NPC, then deliver the parcel to a villager.";
+            case "loader" -> "Loader Depot — accept a heavy-load order and deliver it to the marked destination.";
             default -> "Job board.";
         };
         player.sendMessage(Text.literal(message), true);

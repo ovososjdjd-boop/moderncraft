@@ -32,6 +32,8 @@ import java.util.List;
  */
 public final class FactoryNetworking {
 
+    private static boolean commonRegistered = false;
+
     public static final Identifier OPEN_ID = Moderncraft.id("factory_open");
     public static final Identifier START_ID = Moderncraft.id("factory_start");
     public static final Identifier END_ID = Moderncraft.id("factory_end");
@@ -75,7 +77,9 @@ public final class FactoryNetworking {
             int shiftTicks,
             int shiftDuration,
             List<String> producedIds,
-            List<Integer> producedCounts
+            List<Integer> producedCounts,
+            List<String> inputIds,
+            List<Integer> inputCounts
     ) implements CustomPayload {
         public static final CustomPayload.Id<FactoryStatePayload> ID = new CustomPayload.Id<>(STATE_ID);
         public static final PacketCodec<PacketByteBuf, FactoryStatePayload> CODEC =
@@ -92,6 +96,11 @@ public final class FactoryNetworking {
                                 buf.writeString(p.producedIds.get(i));
                                 buf.writeInt(p.producedCounts.get(i));
                             }
+                            buf.writeInt(p.inputIds.size());
+                            for (int i = 0; i < p.inputIds.size(); i++) {
+                                buf.writeString(p.inputIds.get(i));
+                                buf.writeInt(p.inputCounts.get(i));
+                            }
                         },
                         buf -> {
                             BlockPos pos = buf.readBlockPos();
@@ -107,13 +116,22 @@ public final class FactoryNetworking {
                                 ids.add(buf.readString());
                                 counts.add(buf.readInt());
                             }
-                            return new FactoryStatePayload(pos, sv, ho, iyo, st, sd, ids, counts);
+                            int inputN = buf.readInt();
+                            List<String> inputIds = new ArrayList<>(inputN);
+                            List<Integer> inputCounts = new ArrayList<>(inputN);
+                            for (int i = 0; i < inputN; i++) {
+                                inputIds.add(buf.readString());
+                                inputCounts.add(buf.readInt());
+                            }
+                            return new FactoryStatePayload(pos, sv, ho, iyo, st, sd, ids, counts, inputIds, inputCounts);
                         }
                 );
         @Override public Id<? extends CustomPayload> getId() { return ID; }
     }
 
     public static void registerCommon() {
+        if (commonRegistered) return;
+        commonRegistered = true;
         PayloadTypeRegistry.playS2C().register(OpenScreenPayload.ID, OpenScreenPayload.CODEC);
         PayloadTypeRegistry.playS2C().register(FactoryStatePayload.ID, FactoryStatePayload.CODEC);
         PayloadTypeRegistry.playC2S().register(StartShiftPayload.ID, StartShiftPayload.CODEC);
@@ -151,22 +169,40 @@ public final class FactoryNetworking {
                 sendState(player, be);
                 return;
             }
-            // Compute pay: 50 M\$ per produced item, plus a small completion bonus.
+            int workedTicks = be.shiftTicks();
             List<ItemStack> output = be.endShift();
-            int producedCount = output.stream().mapToInt(ItemStack::getCount).sum();
-            long pay = (long) producedCount * 50L + 100L;
+            // Wages follow the catalog value of the actual manufactured parts.
+            // This keeps factory work connected to the same economy as selling.
+            long pay = 100L;
+            for (ItemStack stack : output) {
+                var id = net.minecraft.registry.Registries.ITEM.getId(stack.getItem());
+                var price = com.moderncraft.economy.price.PriceCatalogView.lookupById(id);
+                pay += price.map(p -> Math.max(1L, (long) p.sell() * stack.getCount() / 4L))
+                        .orElse((long) stack.getCount() * 25L);
+            }
+            boolean completedShift = workedTicks >= be.shiftDuration();
+            if (completedShift) pay += 250L;
             EconomyService.creditWallet(server, player.getUuid(), pay);
+            EconomyService.recordEvent(server, player.getUuid(), "factory", pay,
+                    completedShift ? "Completed factory shift" : "Early factory shift end");
 
             // Try to give the produced items to the player.
             int undelivered = 0;
             for (ItemStack stack : output) {
-                if (!player.getInventory().insertStack(stack)) undelivered += stack.getCount();
+                if (!player.getInventory().insertStack(stack) && !stack.isEmpty()) {
+                    undelivered += stack.getCount();
+                    // Never delete manufactured goods: drop the remainder at the
+                    // player's feet so a full inventory is not an economic loss.
+                    player.dropStack(stack);
+                }
             }
             if (undelivered > 0) {
-                PhoneNetworking.sendError(player, "Your inventory is full; "
-                        + undelivered + " items couldn't be delivered.");
+                PhoneNetworking.sendError(player, "Your inventory was full; "
+                        + undelivered + " items were dropped at your feet.");
             }
-            PhoneNetworking.sendInfo(player, "Shift complete. Earned " + pay + " M\$.");
+            PhoneNetworking.sendInfo(player, completedShift
+                    ? "Shift complete. Earned " + pay + " M$ (completion bonus included)."
+                    : "Shift ended early. Earned " + pay + " M$." );
             PhoneNetworking.syncBalances(player, server);
             sendState(player, be);
         });
@@ -186,15 +222,16 @@ public final class FactoryNetworking {
             ids.add(net.minecraft.registry.Registries.ITEM.getId(s.getItem()).toString());
             counts.add(s.getCount());
         }
+        List<String> inputIds = new ArrayList<>();
+        List<Integer> inputCounts = new ArrayList<>();
+        for (var entry : be.inputStock().entrySet()) {
+            inputIds.add(net.minecraft.registry.Registries.ITEM.getId(entry.getKey()).toString());
+            inputCounts.add(entry.getValue());
+        }
         ServerPlayNetworking.send(player, new FactoryStatePayload(
-                be.getPos(),
-                be.isStructureComplete(),
-                be.hasOwner(),
-                be.isOwner(player.getUuid()),
-                be.shiftTicks(),
-                be.shiftDuration(),
-                ids,
-                counts
+                be.getPos(), be.isStructureComplete(), be.hasOwner(),
+                be.isOwner(player.getUuid()), be.shiftTicks(), be.shiftDuration(),
+                ids, counts, inputIds, inputCounts
         ));
     }
 

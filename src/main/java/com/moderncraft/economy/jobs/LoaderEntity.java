@@ -10,6 +10,7 @@ import net.minecraft.entity.mob.PathAwareEntity;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
+import net.minecraft.nbt.NbtCompound;
 import net.minecraft.particle.ParticleTypes;
 import net.minecraft.registry.Registries;
 import net.minecraft.server.network.ServerPlayerEntity;
@@ -62,6 +63,34 @@ public class LoaderEntity extends PathAwareEntity {
     }
 
     @Override
+    protected void writeCustomDataToNbt(NbtCompound nbt) {
+        super.writeCustomDataToNbt(nbt);
+        nbt.putInt("TicksUntilNextOrder", ticksUntilNextOrder);
+        if (activeOrder != null) {
+            nbt.putString("OrderItem", activeOrder.itemId());
+            nbt.putInt("OrderCount", activeOrder.count());
+            nbt.putLong("OrderReward", activeOrder.reward());
+            nbt.putInt("OrderX", activeOrder.destination().getX());
+            nbt.putInt("OrderY", activeOrder.destination().getY());
+            nbt.putInt("OrderZ", activeOrder.destination().getZ());
+            nbt.putLong("OrderExpiresAt", activeOrder.expiresAt());
+        }
+    }
+
+    @Override
+    protected void readCustomDataFromNbt(NbtCompound nbt) {
+        super.readCustomDataFromNbt(nbt);
+        ticksUntilNextOrder = nbt.getInt("TicksUntilNextOrder");
+        if (nbt.contains("OrderItem") && nbt.contains("OrderX") && nbt.contains("OrderY") && nbt.contains("OrderZ")
+                && nbt.contains("OrderExpiresAt")) {
+            activeOrder = new LoaderOrder(nbt.getString("OrderItem"), nbt.getInt("OrderCount"), nbt.getLong("OrderReward"),
+                    new BlockPos(nbt.getInt("OrderX"), nbt.getInt("OrderY"), nbt.getInt("OrderZ")),
+                    nbt.getLong("OrderExpiresAt"));
+            setGlowing(true);
+        }
+    }
+
+    @Override
     protected void initGoals() {
         this.goalSelector.add(1, new LookAtEntityGoal(this, PlayerEntity.class, 8.0f));
         this.goalSelector.add(2, new WanderAroundFarGoal(this, 0.3));
@@ -73,6 +102,11 @@ public class LoaderEntity extends PathAwareEntity {
         if (this.getWorld().isClient) return;
         ServerWorld sw = (ServerWorld) this.getWorld();
         long now = sw.getTime();
+
+        if (activeOrder != null && activeOrder.expired(now)) {
+            Moderncraft.LOGGER.info("Loader order expired: {}", activeOrder.itemId());
+            clearOrder();
+        }
 
         if (activeOrder == null) {
             ticksUntilNextOrder--;
@@ -112,7 +146,11 @@ public class LoaderEntity extends PathAwareEntity {
                 "minecraft:gold_block",
                 "minecraft:obsidian",
                 "minecraft:anvil",
-                "minecraft:diamond_block"
+                "minecraft:diamond_block",
+                "minecraft:chest",
+                "minecraft:bookshelf",
+                "minecraft:lectern",
+                "minecraft:barrel"
         };
         String id = heavy[sw.random.nextInt(heavy.length)];
         int count = 1 + sw.random.nextInt(3);
@@ -120,7 +158,7 @@ public class LoaderEntity extends PathAwareEntity {
         // the generator placed (we don't know their position here, so we
         // approximate by sampling around the loader's position).
         BlockPos origin = this.getBlockPos();
-        BlockPos dest = pickNearbyFloor(sw, origin, 12);
+        BlockPos dest = pickTarget(sw, origin, 24);
         if (dest == null) return null;
         // Reward = a base fee + per-block price (sells are unreliable for heavy
         // items, so we just use a fixed table).
@@ -130,25 +168,27 @@ public class LoaderEntity extends PathAwareEntity {
             case "minecraft:obsidian" -> 60L;
             case "minecraft:anvil" -> 600L;
             case "minecraft:diamond_block" -> 3600L;
+            case "minecraft:chest", "minecraft:lectern" -> 450L;
+            case "minecraft:bookshelf", "minecraft:barrel" -> 220L;
             default -> 100L;
         };
         long reward = perItem * count + 50L;
-        return new LoaderOrder(id, count, reward, dest);
+        long expiresAt = sw.getTime() + 20L * 60L * 10L;
+        return new LoaderOrder(id, count, reward, dest, expiresAt);
     }
 
-    /** Scan around {@code origin} for an air space above a solid block.
-     *  Returns null if nothing suitable is found. */
-    private BlockPos pickNearbyFloor(ServerWorld sw, BlockPos origin, int radius) {
-        for (int i = 0; i < 32; i++) {
-            int x = origin.getX() + sw.random.nextInt(radius * 2 + 1) - radius;
-            int z = origin.getZ() + sw.random.nextInt(radius * 2 + 1) - radius;
-            int y = sw.getTopY(net.minecraft.world.Heightmap.Type.WORLD_SURFACE, x, z);
-            BlockPos floor = new BlockPos(x, y - 1, z);
-            if (sw.getBlockState(floor).isSolid() && sw.getBlockState(floor.up()).isAir()) {
-                return floor.up();
+    /** Selects one of the real yellow target blocks placed in the village. */
+    private BlockPos pickTarget(ServerWorld world, BlockPos origin, int radius) {
+        List<BlockPos> targets = new ArrayList<>();
+        for (int x = origin.getX() - radius; x <= origin.getX() + radius; x++) {
+            for (int y = origin.getY() - 4; y <= origin.getY() + 8; y++) {
+                for (int z = origin.getZ() - radius; z <= origin.getZ() + radius; z++) {
+                    BlockPos pos = new BlockPos(x, y, z);
+                    if (world.getBlockState(pos).isOf(JobBlocks.LOADER_TARGET)) targets.add(pos.toImmutable());
+                }
             }
         }
-        return null;
+        return targets.isEmpty() ? null : targets.get(world.random.nextInt(targets.size()));
     }
 
     @Override
@@ -165,7 +205,8 @@ public class LoaderEntity extends PathAwareEntity {
         sp.sendMessage(Text.literal("Deliver " + activeOrder.count() + " × " +
                 displayNameOf(activeOrder.itemId()) + " to " +
                 d.getX() + ", " + d.getY() + ", " + d.getZ() +
-                ". Reward: " + activeOrder.reward() + " M$."), false);
+                ". Reward: " + activeOrder.reward() + " M$. Deadline: "
+                + Math.max(0L, (activeOrder.expiresAt() - this.getWorld().getTime()) / 20L) + " seconds."), false);
         // We don't take the items from the player here — delivery is
         // completed by interacting with the destination block (see LoaderTarget
         // for the matching logic). This makes 'delivery' feel like a real

@@ -1,5 +1,6 @@
 package com.moderncraft.client.bank;
 
+import com.moderncraft.client.ModerncraftGui;
 import com.moderncraft.client.phone.PhoneClientState;
 import com.moderncraft.economy.bank.BankNetworking;
 import net.minecraft.client.gui.DrawContext;
@@ -56,6 +57,8 @@ public class BankScreen extends Screen {
         addDrawableChild(ButtonWidget.builder(Text.literal("Max"), b -> setMax(true))
                 .dimensions(cx + 32, 180, 40, 18).build());
 
+        addDrawableChild(ButtonWidget.builder(Text.literal("Transfer"), b -> this.client.setScreen(new com.moderncraft.client.phone.TransferScreen()))
+                .dimensions(cx - 45, 208, 90, 20).build());
         addDrawableChild(ButtonWidget.builder(Text.literal("Back"), b -> close())
                 .dimensions(8, this.height - 26, 60, 20).build());
     }
@@ -85,9 +88,8 @@ public class BankScreen extends Screen {
 
     @Override
     public void render(DrawContext ctx, int mouseX, int mouseY, float delta) {
-        ctx.fill(0, 0, this.width, this.height, 0xFF101418);
-        ctx.fill(0, 0, this.width, 28, 0xFF202830);
-        ctx.drawText(this.textRenderer, "Bank", 8, 10, 0xFFFFFFFF, true);
+        ModerncraftGui.background(ctx, this.width, this.height);
+        ModerncraftGui.header(ctx, this.textRenderer, this.width, "Bank", null);
         int cx = this.width / 2;
         String wallet = "Wallet: " + fmt(this.wallet) + " M$";
         String bank = "Bank:   " + fmt(this.bank) + " M$";

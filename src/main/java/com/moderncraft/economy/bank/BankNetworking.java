@@ -27,6 +27,8 @@ import net.minecraft.util.math.BlockPos;
  */
 public final class BankNetworking {
 
+    private static boolean commonRegistered = false;
+
     public static final Identifier OPEN_ID = Moderncraft.id("bank_open");
     public static final Identifier DEPOSIT_ID = Moderncraft.id("bank_deposit");
     public static final Identifier WITHDRAW_ID = Moderncraft.id("bank_withdraw");
@@ -75,6 +77,8 @@ public final class BankNetworking {
     }
 
     public static void registerCommon() {
+        if (commonRegistered) return;
+        commonRegistered = true;
         PayloadTypeRegistry.playS2C().register(OpenScreenPayload.ID, OpenScreenPayload.CODEC);
         PayloadTypeRegistry.playC2S().register(BankDepositPayload.ID, BankDepositPayload.CODEC);
         PayloadTypeRegistry.playC2S().register(BankWithdrawPayload.ID, BankWithdrawPayload.CODEC);

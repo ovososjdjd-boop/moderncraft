@@ -1,18 +1,24 @@
 package com.moderncraft.economy.jobs;
 
-/**
- * A single courier order — what the player needs to bring and how much
- * they get paid. Created server-side when the courier generates a new
- * request, and synchronised to the client so the highlight and any UI
- * show consistent data.
- *
- * @param itemId   namespaced item id, e.g. {@code minecraft:diamond}
- * @param count    how many the courier wants
- * @param reward   M\$ the courier pays for the delivery
- */
-public record CourierOrder(String itemId, int count, long reward) {
+import net.minecraft.util.math.BlockPos;
 
+import java.util.UUID;
+
+/** A parcel request issued by the cafe for one concrete resident. */
+public record CourierOrder(
+        String itemId,
+        int count,
+        long reward,
+        UUID recipientId,
+        BlockPos recipientPosition,
+        long expiresAt
+) {
     public boolean isValid() {
-        return itemId != null && !itemId.isBlank() && count > 0 && reward > 0;
+        return itemId != null && !itemId.isBlank()
+                && count > 0 && reward > 0
+                && recipientId != null && recipientPosition != null
+                && expiresAt > 0;
     }
+
+    public boolean expired(long worldTime) { return worldTime >= expiresAt; }
 }

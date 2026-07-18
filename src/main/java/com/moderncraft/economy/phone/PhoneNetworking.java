@@ -40,6 +40,8 @@ import java.util.UUID;
  */
 public final class PhoneNetworking {
 
+    private static boolean commonRegistered = false;
+
     private PhoneNetworking() {}
 
     public static final Identifier OPEN_REQUEST_ID = Moderncraft.id("phone_open_request");
@@ -48,6 +50,8 @@ public final class PhoneNetworking {
     public static final Identifier BALANCE_ID     = Moderncraft.id("phone_balance");
     public static final Identifier BANK_ID        = Moderncraft.id("phone_bank");
     public static final Identifier MESSAGE_ID     = Moderncraft.id("phone_message");
+    public static final Identifier TRANSFER_ID    = Moderncraft.id("phone_transfer");
+    public static final Identifier HISTORY_ID     = Moderncraft.id("phone_history");
 
     // --- record definitions -------------------------------------------------
 
@@ -115,6 +119,24 @@ public final class PhoneNetworking {
         @Override public Id<? extends CustomPayload> getId() { return ID; }
     }
 
+    public record TransferPayload(String playerName, long amount) implements CustomPayload {
+        public static final CustomPayload.Id<TransferPayload> ID = new CustomPayload.Id<>(TRANSFER_ID);
+        public static final PacketCodec<PacketByteBuf, TransferPayload> CODEC = PacketCodec.of(
+                (p, buf) -> { buf.writeString(p.playerName); buf.writeLong(p.amount); },
+                buf -> new TransferPayload(buf.readString(16), buf.readLong())
+        );
+        @Override public Id<? extends CustomPayload> getId() { return ID; }
+    }
+
+    public record HistoryPayload(String encoded) implements CustomPayload {
+        public static final CustomPayload.Id<HistoryPayload> ID = new CustomPayload.Id<>(HISTORY_ID);
+        public static final PacketCodec<PacketByteBuf, HistoryPayload> CODEC = PacketCodec.of(
+                (p, buf) -> buf.writeString(p.encoded),
+                buf -> new HistoryPayload(buf.readString(32767))
+        );
+        @Override public Id<? extends CustomPayload> getId() { return ID; }
+    }
+
     public record PhoneMessagePayload(String text, boolean isError) implements CustomPayload {
         public static final CustomPayload.Id<PhoneMessagePayload> ID =
                 new CustomPayload.Id<>(MESSAGE_ID);
@@ -132,11 +154,15 @@ public final class PhoneNetworking {
     // --- registration -------------------------------------------------------
 
     public static void registerCommon() {
+        if (commonRegistered) return;
+        commonRegistered = true;
         PayloadTypeRegistry.playC2S().register(OpenPhoneRequestPayload.ID, OpenPhoneRequestPayload.CODEC);
         PayloadTypeRegistry.playC2S().register(BuyItemPayload.ID, BuyItemPayload.CODEC);
         PayloadTypeRegistry.playC2S().register(BankActionPayload.ID, BankActionPayload.CODEC);
+        PayloadTypeRegistry.playC2S().register(TransferPayload.ID, TransferPayload.CODEC);
         PayloadTypeRegistry.playS2C().register(OpenPhoneAckPayload.ID, OpenPhoneAckPayload.CODEC);
         PayloadTypeRegistry.playS2C().register(BalanceSyncPayload.ID, BalanceSyncPayload.CODEC);
+        PayloadTypeRegistry.playS2C().register(HistoryPayload.ID, HistoryPayload.CODEC);
         PayloadTypeRegistry.playS2C().register(PhoneMessagePayload.ID, PhoneMessagePayload.CODEC);
     }
 
@@ -148,6 +174,8 @@ public final class PhoneNetworking {
                     player.getServer(), player.getUuid());
             ServerPlayNetworking.send(player,
                     new OpenPhoneAckPayload(account.wallet(), account.bank()));
+            com.moderncraft.economy.pickup.PickupPointNetworking.syncOrders(player, player.getServer());
+            syncHistory(player, player.getServer());
             // The client opens the screen on receiving the ACK.
         });
 
@@ -155,7 +183,7 @@ public final class PhoneNetworking {
             ServerPlayerEntity player = ctx.player();
             MinecraftServer server = player.getServer();
             String id = payload.itemId();
-            int count = Math.max(1, payload.count());
+            int count = Math.min(Math.max(1, payload.count()), 2304);
             var priceOpt = com.moderncraft.economy.price.PriceCatalogView.lookupById(id);
             if (priceOpt.isEmpty()) {
                 sendError(player, "Item '" + id + "' is not sold in the catalog.");
@@ -164,6 +192,17 @@ public final class PhoneNetworking {
             var price = priceOpt.get();
             if (price.buy() <= 0) {
                 sendError(player, price.displayName() + " cannot be purchased.");
+                return;
+            }
+            Identifier itemIdentifier = Identifier.tryParse(id);
+            Item item = itemIdentifier == null ? null : Registries.ITEM.get(itemIdentifier);
+            if (item == null) {
+                sendError(player, "Item id not in registry: " + id);
+                return;
+            }
+            var state = com.moderncraft.economy.state.WorldEconomyState.get(server);
+            if (!state.canAcceptOrder(player.getUuid(), count)) {
+                sendError(player, "Your pickup order queue is full. Collect existing orders first.");
                 return;
             }
             long total = (long) price.buy() * count;
@@ -178,41 +217,44 @@ public final class PhoneNetworking {
                 syncBalances(player, server);
                 return;
             }
-            // Try to give the items to the player. If their inventory is full,
-            // refund the money and tell them.
-            Item item = Registries.ITEM.get(Identifier.tryParse(id) == null
-                    ? Identifier.of("minecraft", id) : Identifier.tryParse(id));
-            if (item == null) {
-                // Should not happen if catalog is in sync with the registry.
-                com.moderncraft.economy.state.EconomyService.creditWallet(
-                        server, player.getUuid(), total);
-                sendError(player, "Item id not in registry: " + id);
-                syncBalances(player, server);
+            // Purchases are paid for immediately but remain at the pickup point.
+            // This prevents remote buying from becoming an inventory teleport and
+            // gives the delivery system a real economic role.
+            state.addOrder(player.getUuid(), new com.moderncraft.economy.state.PurchaseOrder(id, count));
+            com.moderncraft.economy.state.EconomyService.recordEvent(server, player.getUuid(), "purchase", total,
+                    count + " × " + price.displayName());
+            sendInfo(player, "Order placed: " + count + " × " + price.displayName()
+                    + ". Collect it at a Pickup Point.");
+            syncBalances(player, server);
+            com.moderncraft.economy.pickup.PickupPointNetworking.syncOrders(player, server);
+        });
+
+        ServerPlayNetworking.registerGlobalReceiver(TransferPayload.ID, (payload, ctx) -> {
+            ServerPlayerEntity sender = ctx.player();
+            MinecraftServer server = sender.getServer();
+            if (payload.amount() <= 0) {
+                sendError(sender, "Transfer amount must be positive.");
                 return;
             }
-            ItemStack stack = new ItemStack(item, count);
-            boolean fits = player.getInventory().insertStack(stack);
-            if (!fits || stack.getCount() > 0) {
-                // Some or all of the stack didn't fit — refund the difference.
-                int returned = stack.getCount();
-                long refund = (long) returned * price.buy();
-                if (refund > 0) {
-                    com.moderncraft.economy.state.EconomyService.creditWallet(
-                            server, player.getUuid(), refund);
-                }
-                if (returned == count) {
-                    sendError(player, "Your inventory is full.");
-                    syncBalances(player, server);
-                    return;
-                }
-                sendInfo(player, "Bought " + (count - returned) + " × " + price.displayName()
-                        + " (your inventory filled up; "
-                        + returned + " not delivered, refunded " + refund + " M$).");
-            } else {
-                sendInfo(player, "Bought " + count + " × " + price.displayName()
-                        + " for " + total + " M$.");
+            ServerPlayerEntity target = server.getPlayerManager().getPlayer(payload.playerName());
+            if (target == null) {
+                sendError(sender, "That player is not online.");
+                return;
             }
-            syncBalances(player, server);
+            var result = com.moderncraft.economy.state.EconomyService.transferWallet(
+                    server, sender.getUuid(), target.getUuid(), payload.amount());
+            if (result != com.moderncraft.economy.state.EconomyService.Result.OK) {
+                sendError(sender, switch (result) {
+                    case NOT_ENOUGH_WALLET -> "Not enough money in wallet.";
+                    case INVALID_AMOUNT -> "Invalid transfer.";
+                    default -> "Transfer failed.";
+                });
+                return;
+            }
+            sendInfo(sender, "Transferred " + payload.amount() + " M$ to " + target.getName().getString() + ".");
+            sendInfo(target, "Received " + payload.amount() + " M$ from " + sender.getName().getString() + ".");
+            syncBalances(sender, server);
+            syncBalances(target, server);
         });
 
         ServerPlayNetworking.registerGlobalReceiver(BankActionPayload.ID, (payload, ctx) -> {
@@ -251,9 +293,27 @@ public final class PhoneNetworking {
         ClientPlayNetworking.send(new BankActionPayload(deposit, amount));
     }
 
+    public static void sendTransfer(String playerName, long amount) {
+        ClientPlayNetworking.send(new TransferPayload(playerName, amount));
+    }
+
     public static void syncBalances(ServerPlayerEntity player, MinecraftServer server) {
         var account = com.moderncraft.economy.state.EconomyService.view(server, player.getUuid());
         ServerPlayNetworking.send(player, new BalanceSyncPayload(account.wallet(), account.bank()));
+        syncHistory(player, server);
+    }
+
+    public static void syncHistory(ServerPlayerEntity player, MinecraftServer server) {
+        var entries = com.moderncraft.economy.state.WorldEconomyState.get(server).ledger(player.getUuid());
+        StringBuilder encoded = new StringBuilder();
+        int start = Math.max(0, entries.size() - 30);
+        for (int i = start; i < entries.size(); i++) {
+            var entry = entries.get(i);
+            if (encoded.length() > 0) encoded.append(';');
+            encoded.append(entry.type()).append('|').append(entry.amount()).append('|')
+                    .append(entry.timestamp()).append('|').append(entry.note().replace(";", ",").replace("|", "/"));
+        }
+        ServerPlayNetworking.send(player, new HistoryPayload(encoded.toString()));
     }
 
     public static void sendInfo(ServerPlayerEntity player, String msg) {

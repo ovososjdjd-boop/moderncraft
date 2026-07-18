@@ -12,11 +12,11 @@ import net.minecraft.util.math.BlockPos;
 import static net.minecraft.server.command.CommandManager.literal;
 
 /**
- * Debug/admin commands for the village.
+ * Debug/admin commands for Moderncraft village districts.
  * <ul>
- *     <li>{@code /village status} — show center + generated flag</li>
- *     <li>{@code /village regen} — wipe and regenerate at the same center</li>
- *     <li>{@code /village here} — regenerate at the player's position</li>
+ *     <li>{@code /village status} — show generated district count</li>
+ *     <li>{@code /village regen} — rebuild the first district (debug)</li>
+ *     <li>{@code /village here} — build a district at the player's position (debug)</li>
  * </ul>
  */
 public final class VillageCommands {
@@ -43,7 +43,9 @@ public final class VillageCommands {
         }
         BlockPos c = s.getCenter();
         ctx.getSource().sendMessage(() -> Text.empty()
-                .append(Text.literal("Village center: ").formatted(Formatting.GOLD))
+                .append(Text.literal("Moderncraft districts: ").formatted(Formatting.GOLD))
+                .append(Text.literal(Integer.toString(s.districtCount())).formatted(Formatting.WHITE))
+                .append(Text.literal("; first district origin: ").formatted(Formatting.GOLD))
                 .append(Text.literal(c.getX() + ", " + c.getY() + ", " + c.getZ()).formatted(Formatting.WHITE)));
         return 1;
     }

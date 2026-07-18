@@ -88,6 +88,8 @@ public class LoaderTargetBlock extends BlockWithEntity {
         long reward = order.reward();
         com.moderncraft.economy.state.EconomyService.creditWallet(
                 sp.getServer(), sp.getUuid(), reward);
+        com.moderncraft.economy.state.EconomyService.recordEvent(sp.getServer(), sp.getUuid(), "loader", reward,
+                "Heavy load delivered");
         com.moderncraft.economy.phone.PhoneNetworking.sendInfo(sp,
                 "Delivered " + order.count() + " × " + displayNameOf(order.itemId())
                         + ". Earned " + reward + " M$.");
@@ -109,6 +111,7 @@ public class LoaderTargetBlock extends BlockWithEntity {
                 LoaderEntity.class,
                 new net.minecraft.util.math.Box(target).expand(radius),
                 e -> e.activeOrder() != null
+                        && !e.activeOrder().expired(world.getTime())
                         && e.activeOrder().destination() != null
                         && e.activeOrder().destination().equals(target))) {
             return entity;

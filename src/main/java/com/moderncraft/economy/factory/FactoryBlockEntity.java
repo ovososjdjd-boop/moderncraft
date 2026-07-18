@@ -6,6 +6,7 @@ import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
 import net.minecraft.item.Items;
 import net.minecraft.nbt.NbtCompound;
+import net.minecraft.registry.RegistryWrapper;
 import net.minecraft.particle.ParticleTypes;
 import net.minecraft.registry.Registries;
 import net.minecraft.server.world.ServerWorld;
@@ -14,7 +15,9 @@ import net.minecraft.util.math.Direction;
 import net.minecraft.world.World;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 /**
@@ -36,23 +39,38 @@ public class FactoryBlockEntity extends BlockEntity {
     public static final int TICK_INTERVAL = 100; // 5 seconds
     public static final float PRODUCTION_CHANCE = 0.65f;
 
-    /** Possible outputs the factory can produce. Weighted equally. */
-    public static final List<Item> POSSIBLE_OUTPUTS = List.of(
-            Items.REDSTONE,
-            Items.REDSTONE_TORCH,
-            Items.REPEATER,
-            Items.COMPARATOR,
-            Items.PISTON,
-            Items.STICKY_PISTON,
-            Items.OBSERVER,
-            Items.HOPPER
+    /** Production recipes. The weights make basic components common and complex parts rare. */
+    public static final List<FactoryRecipe> RECIPES = List.of(
+            new FactoryRecipe(Items.IRON_INGOT, 1, Items.REDSTONE, 2, 5, 30),
+            new FactoryRecipe(Items.REDSTONE, 1, Items.REDSTONE_TORCH, 1, 3, 20),
+            new FactoryRecipe(Items.REDSTONE, 2, Items.REPEATER, 1, 2, 14),
+            new FactoryRecipe(Items.QUARTZ, 1, Items.COMPARATOR, 1, 2, 10),
+            new FactoryRecipe(Items.IRON_INGOT, 2, Items.PISTON, 1, 2, 8),
+            new FactoryRecipe(Items.PISTON, 1, Items.STICKY_PISTON, 1, 2, 6),
+            new FactoryRecipe(Items.QUARTZ, 1, Items.OBSERVER, 1, 1, 5),
+            new FactoryRecipe(Items.IRON_INGOT, 5, Items.HOPPER, 1, 1, 4)
     );
+
+    private FactoryRecipe chooseRecipe(java.util.Random random) {
+        List<FactoryRecipe> available = RECIPES.stream()
+                .filter(recipe -> inputStock.getOrDefault(recipe.input(), 0) >= recipe.inputCount())
+                .toList();
+        if (available.isEmpty()) return null;
+        int total = available.stream().mapToInt(FactoryRecipe::weight).sum();
+        int roll = random.nextInt(total);
+        for (FactoryRecipe recipe : available) {
+            roll -= recipe.weight();
+            if (roll < 0) return recipe;
+        }
+        return available.get(available.size() - 1);
+    }
 
     private boolean structureValid = false;
     private UUID shiftOwner = null;
     private int shiftTicks = 0;
     private int ticksToNext = TICK_INTERVAL;
     private final List<ItemStack> produced = new ArrayList<>();
+    private final Map<Item, Integer> inputStock = new HashMap<>();
 
     public FactoryBlockEntity(BlockPos pos, BlockState state) {
         super(com.moderncraft.economy.ModBlockEntities.FACTORY_BE, pos, state);
@@ -64,6 +82,33 @@ public class FactoryBlockEntity extends BlockEntity {
     public int shiftTicks() { return shiftTicks; }
     public int shiftDuration() { return SHIFT_DURATION_TICKS; }
     public List<ItemStack> produced() { return produced; }
+
+    public Map<Item, Integer> inputStock() { return Map.copyOf(inputStock); }
+
+    public static boolean acceptsInput(Item item) {
+        return RECIPES.stream().anyMatch(recipe -> recipe.input() == item);
+    }
+
+    /** Adds material to the factory stock and returns the amount accepted. */
+    public int addInput(Item item, int amount) {
+        if (item == null || amount <= 0) return 0;
+        int current = inputStock.getOrDefault(item, 0);
+        int accepted = Math.min(amount, 64 * 64 - current);
+        if (accepted > 0) {
+            inputStock.put(item, current + accepted);
+            markDirty();
+        }
+        return accepted;
+    }
+
+    private boolean consumeInput(Item item, int amount) {
+        int current = inputStock.getOrDefault(item, 0);
+        if (current < amount) return false;
+        if (current == amount) inputStock.remove(item);
+        else inputStock.put(item, current - amount);
+        markDirty();
+        return true;
+    }
 
     public boolean hasOwner() { return shiftOwner != null; }
     public boolean isOwner(UUID playerId) { return playerId.equals(shiftOwner); }
@@ -98,8 +143,11 @@ public class FactoryBlockEntity extends BlockEntity {
         if (be.ticksToNext <= 0) {
             be.ticksToNext = TICK_INTERVAL;
             if (world.random.nextFloat() < PRODUCTION_CHANCE) {
-                Item output = POSSIBLE_OUTPUTS.get(world.random.nextInt(POSSIBLE_OUTPUTS.size()));
-                be.produced.add(new ItemStack(output, 1 + world.random.nextInt(2)));
+                FactoryRecipe recipe = be.chooseRecipe(world.random);
+                if (recipe != null && be.consumeInput(recipe.input(), recipe.inputCount())) {
+                    int amount = recipe.minCount() + world.random.nextInt(recipe.maxCount() - recipe.minCount() + 1);
+                    be.produced.add(new ItemStack(recipe.output(), amount));
+                }
             }
             // Cosmetic: gear rotates, smoke particles.
             BlockPos gearPos = pos.up();
@@ -165,8 +213,8 @@ public class FactoryBlockEntity extends BlockEntity {
     // --- persistence --------------------------------------------------------
 
     @Override
-    public void writeNbt(NbtCompound nbt) {
-        super.writeNbt(nbt);
+    public void writeNbt(NbtCompound nbt, RegistryWrapper.WrapperLookup lookup) {
+        super.writeNbt(nbt, lookup);
         nbt.putBoolean("structureValid", structureValid);
         nbt.putInt("shiftTicks", shiftTicks);
         nbt.putInt("ticksToNext", ticksToNext);
@@ -179,15 +227,32 @@ public class FactoryBlockEntity extends BlockEntity {
         }
         items.putInt("size", produced.size());
         nbt.put("produced", items);
+        NbtCompound stock = new NbtCompound();
+        for (var entry : inputStock.entrySet()) {
+            String id = Registries.ITEM.getId(entry.getKey()).toString();
+            stock.putInt(id, entry.getValue());
+        }
+        nbt.put("inputStock", stock);
     }
 
     @Override
-    public void readNbt(NbtCompound nbt) {
-        super.readNbt(nbt);
+    public void readNbt(NbtCompound nbt, RegistryWrapper.WrapperLookup lookup) {
+        super.readNbt(nbt, lookup);
         this.structureValid = nbt.getBoolean("structureValid");
         this.shiftTicks = nbt.getInt("shiftTicks");
         this.ticksToNext = nbt.getInt("ticksToNext");
         if (nbt.contains("shiftOwner")) this.shiftOwner = nbt.getUuid("shiftOwner");
+        inputStock.clear();
+        if (nbt.contains("inputStock")) {
+            NbtCompound stock = nbt.getCompound("inputStock");
+            for (String idString : stock.getKeys()) {
+                var identifier = net.minecraft.util.Identifier.tryParse(idString);
+                if (identifier == null) continue;
+                Item item = Registries.ITEM.get(identifier);
+                int count = stock.getInt(idString);
+                if (item != null && count > 0) inputStock.put(item, Math.min(count, 64 * 64));
+            }
+        }
         produced.clear();
         if (nbt.contains("produced")) {
             NbtCompound items = nbt.getCompound("produced");

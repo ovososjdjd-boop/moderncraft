@@ -1,12 +1,11 @@
 package com.moderncraft.client.phone;
 
-import com.moderncraft.economy.price.PriceCategory;
+import com.moderncraft.client.ModerncraftGui;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.gui.screen.Screen;
 import net.minecraft.client.gui.widget.ButtonWidget;
 import net.minecraft.item.ItemStack;
 import net.minecraft.text.Text;
-import net.minecraft.util.Formatting;
 import net.minecraft.util.Identifier;
 
 /**
@@ -20,11 +19,11 @@ public class PhoneHomeScreen extends Screen {
 
     private static final int TILE_SIZE = 64;
     private static final int TILE_PAD = 16;
-    private static final int COLS = 2;
+    private static final int COLS = 3;
     private static final int ROWS = 2;
 
     public PhoneHomeScreen() {
-        super(Text.literal("Phone"));
+        super(Text.translatable("gui.moderncraft.phone"));
     }
 
     @Override
@@ -35,11 +34,14 @@ public class PhoneHomeScreen extends Screen {
         int startX = (this.width - gridW) / 2;
         int startY = (this.height - gridH) / 2;
 
-        addApp(startX, startY, Items.CATALOG, Text.literal("Catalog"), b -> openCatalog());
-        addApp(startX + TILE_SIZE + TILE_PAD, startY, Items.BANK, Text.literal("Bank"), b -> openBank());
-        addApp(startX, startY + TILE_SIZE + TILE_PAD, Items.STOCK, Text.literal("Stock"), b -> openStock());
+        addApp(startX, startY, Items.CATALOG, Text.translatable("gui.moderncraft.catalog"), b -> openCatalog());
+        addApp(startX + TILE_SIZE + TILE_PAD, startY, Items.BANK, Text.translatable("gui.moderncraft.bank"), b -> openBank());
+        addApp(startX + 2 * (TILE_SIZE + TILE_PAD), startY, Items.STOCK, Text.translatable("gui.moderncraft.stock"), b -> openStock());
+        addApp(startX, startY + TILE_SIZE + TILE_PAD, Items.JOBS, Text.translatable("gui.moderncraft.jobs"), b -> openJobs());
         addApp(startX + TILE_SIZE + TILE_PAD, startY + TILE_SIZE + TILE_PAD,
-                Items.JOBS, Text.literal("Jobs"), b -> openJobs());
+                Items.ORDERS, Text.translatable("gui.moderncraft.orders"), b -> openOrders());
+        addApp(startX + 2 * (TILE_SIZE + TILE_PAD), startY + TILE_SIZE + TILE_PAD,
+                Items.HISTORY, Text.translatable("gui.moderncraft.history"), b -> openHistory());
 
         // Close button.
         addDrawableChild(ButtonWidget.builder(Text.literal("Close"), b -> this.close())
@@ -53,15 +55,9 @@ public class PhoneHomeScreen extends Screen {
 
     @Override
     public void render(DrawContext ctx, int mouseX, int mouseY, float delta) {
-        // Background — solid dark colour so the phone feels "on".
-        ctx.fill(0, 0, this.width, this.height, 0xFF101418);
-
-        // Status bar at the top: title + balance.
-        ctx.fill(0, 0, this.width, 36, 0xFF202830);
-        ctx.drawText(this.textRenderer, "Phone", 10, 12, 0xFFFFFFFF, true);
-        String bal = "Wallet: " + fmt(PhoneClientState.wallet) + " M$  |  Bank: " + fmt(PhoneClientState.bank) + " M$";
-        ctx.drawText(this.textRenderer, bal, this.width - this.textRenderer.getWidth(bal) - 10, 12,
-                0xFFA0E0A0, true);
+        ModerncraftGui.background(ctx, this.width, this.height);
+        ModerncraftGui.header(ctx, this.textRenderer, this.width, Text.translatable("gui.moderncraft.phone").getString(),
+                ModerncraftGui.balance(PhoneClientState.wallet, PhoneClientState.bank));
 
         // Each app tile is drawn by the AppTileButton itself, but we render the
         // label below the grid here for clarity.
@@ -83,13 +79,19 @@ public class PhoneHomeScreen extends Screen {
     }
 
     private void openStock() {
-        this.client.setScreen(new PlaceholderScreen("Stock",
-                Text.literal("The stock exchange is coming in a future update.")));
+        com.moderncraft.economy.stock.StockNetworking.sendOpenRequest();
     }
 
     private void openJobs() {
-        this.client.setScreen(new PlaceholderScreen("Jobs",
-                Text.literal("Courier, loader, and factory worker jobs will be added in a future update.")));
+        this.client.setScreen(new JobsScreen());
+    }
+
+    private void openOrders() {
+        this.client.setScreen(new OrdersScreen());
+    }
+
+    private void openHistory() {
+        this.client.setScreen(new HistoryScreen());
     }
 
     // --- inner types --------------------------------------------------------
@@ -100,6 +102,8 @@ public class PhoneHomeScreen extends Screen {
         public static final ItemStack BANK    = new ItemStack(net.minecraft.item.Items.GOLD_INGOT);
         public static final ItemStack STOCK   = new ItemStack(net.minecraft.item.Items.EMERALD);
         public static final ItemStack JOBS    = new ItemStack(net.minecraft.item.Items.IRON_PICKAXE);
+        public static final ItemStack ORDERS  = new ItemStack(net.minecraft.item.Items.PAPER);
+        public static final ItemStack HISTORY = new ItemStack(net.minecraft.item.Items.WRITABLE_BOOK);
         private Items() {}
     }
 
