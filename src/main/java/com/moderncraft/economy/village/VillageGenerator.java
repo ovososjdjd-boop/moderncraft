@@ -54,20 +54,28 @@ public final class VillageGenerator {
             }
         }
 
-        // The 8 buildings, placed in a 3x3 grid around the centre. The centre
-        // cell stays empty (with a small decoration).
-        // North: Loader, Factory, House
-        // Mid:  Cafe,   Pickup,    Bank
-        // South: House,  Notice,   Stock
-        placeFactory(world, center.add(-7, 1, -7));
-        placePickup(world, center.add(0, 1, -7));
-        placeLoaderDepot(world, center.add(7, 1, -7));
-        placeCafe(world, center.add(-7, 1, 0));
-        placeNoticeHub(world, center.add(0, 1, 0));
-        placeBank(world, center.add(7, 1, 0));
-        placeHouse(world, center.add(-7, 1, 7));
-        placeStockExchange(world, center.add(0, 1, 7));
-        placeHouse(world, center.add(7, 1, 7));
+        // Rotate the complete 3x3 plan deterministically per village. This
+        // gives villages different orientations while keeping every building
+        // and every job target in a predictable relation to the district.
+        int rotation = Math.floorMod(center.getX() * 31 + center.getZ(), 4);
+        placeFactory(world, layoutPos(center, -7, -7, rotation));
+        placePickup(world, layoutPos(center, 0, -7, rotation));
+        placeLoaderDepot(world, layoutPos(center, 7, -7, rotation));
+        placeCafe(world, layoutPos(center, -7, 0, rotation));
+        placeNoticeHub(world, layoutPos(center, 0, 0, rotation));
+        placeBank(world, layoutPos(center, 7, 0, rotation));
+        placeHouse(world, layoutPos(center, -7, 7, rotation));
+        placeStockExchange(world, layoutPos(center, 0, 7, rotation));
+        placeHouse(world, layoutPos(center, 7, 7, rotation));
+    }
+
+    private static BlockPos layoutPos(BlockPos center, int dx, int dz, int rotation) {
+        return switch (rotation) {
+            case 1 -> center.add(dz, 1, -dx);
+            case 2 -> center.add(-dx, 1, -dz);
+            case 3 -> center.add(-dz, 1, dx);
+            default -> center.add(dx, 1, dz);
+        };
     }
 
     private static void removeDistrictEntities(ServerWorld world, BlockPos center) {
