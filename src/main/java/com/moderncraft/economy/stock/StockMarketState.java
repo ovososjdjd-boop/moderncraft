@@ -150,6 +150,7 @@ public final class StockMarketState extends PersistentState {
         int current = portfolio.getOrDefault(id, 0);
         if (current > Integer.MAX_VALUE - qty) return false;
         portfolio.put(id, current + qty);
+        shiftPrice(id, Math.max(1L, c.price() / 1000L));
         markDirty();
         return true;
     }
@@ -166,8 +167,21 @@ public final class StockMarketState extends PersistentState {
         if (actual == have) portfolio.remove(id);
         else portfolio.put(id, have - actual);
         if (portfolio.isEmpty()) shares.remove(playerId);
+        shiftPrice(id, -Math.max(1L, c.price() / 1000L));
         markDirty();
         return (long) actual * c.price();
+    }
+
+    private void shiftPrice(String id, long delta) {
+        Company current = byId(id);
+        if (current == null) return;
+        long next = Math.max(50L, current.price() + delta);
+        for (int i = 0; i < companies.size(); i++) {
+            if (companies.get(i).id().equals(id)) {
+                companies.set(i, current.withPrice(next));
+                return;
+            }
+        }
     }
 
     /**
