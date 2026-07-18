@@ -1,0 +1,20 @@
+{
+  "item.moderncraft.phone": "Телефон",
+  "block.moderncraft.pickup_point": "Пункт выдачи",
+  "block.moderncraft.factory_base": "Основание завода",
+  "block.moderncraft.factory_chimney": "Труба завода",
+  "block.moderncraft.factory_pipe": "Трубопровод завода",
+  "block.moderncraft.factory_gear": "Шестерня завода",
+  "block.moderncraft.factory_notice_board": "Доска объявлений завода",
+  "block.moderncraft.bank": "Банк",
+  "block.moderncraft.stock_exchange": "Биржа",
+  "block.moderncraft.cafe_board": "Доска объявлений кафе",
+  "block.moderncraft.loader_board": "Доска объявлений грузчиков",
+  "item.moderncraft.cafe_courier_spawn_egg": "Спавн-яйцо курьера",
+  "item.moderncraft.loader_spawn_egg": "Спавн-яйцо грузчика",
+  "entity.moderncraft.cafe_courier": "Курьер кафе",
+  "entity.moderncraft.loader": "Грузчик",
+  "block.moderncraft.loader_target": "Точка доставки грузчика",
+  "itemGroup.moderncraft.main": "Moderncraft",
+  "economy.moderncraft.currency": "М$"
+}

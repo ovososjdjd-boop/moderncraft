@@ -1,0 +1,23 @@
+[
+  { "id": "white_dye",            "buy": 4,  "sell": 3 },
+  { "id": "orange_dye",           "buy": 4,  "sell": 3 },
+  { "id": "magenta_dye",          "buy": 4,  "sell": 3 },
+  { "id": "light_blue_dye",       "buy": 4,  "sell": 3 },
+  { "id": "yellow_dye",           "buy": 4,  "sell": 3 },
+  { "id": "lime_dye",             "buy": 4,  "sell": 3 },
+  { "id": "pink_dye",             "buy": 4,  "sell": 3 },
+  { "id": "gray_dye",             "buy": 4,  "sell": 3 },
+  { "id": "cyan_dye",             "buy": 4,  "sell": 3 },
+  { "id": "purple_dye",           "buy": 4,  "sell": 3 },
+  { "id": "blue_dye",             "buy": 4,  "sell": 3 },
+  { "id": "brown_dye",            "buy": 4,  "sell": 3 },
+  { "id": "green_dye",            "buy": 4,  "sell": 3 },
+  { "id": "red_dye",              "buy": 4,  "sell": 3 },
+  { "id": "black_dye",            "buy": 4,  "sell": 3 },
+
+  { "id": "bone_meal",            "buy": 3,  "sell": 2 },
+  { "id": "ink_sac",              "buy": 3,  "sell": 2 },
+  { "id": "glow_ink_sac",         "buy": 18, "sell": 13 },
+  { "id": "cocoa_beans",          "buy": 6,  "sell": 4 },
+  { "id": "lapis_lazuli",         "buy": 9,  "sell": 6 }
+]
