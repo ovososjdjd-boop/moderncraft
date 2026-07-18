@@ -65,6 +65,15 @@ public class FactoryBaseBlock extends BlockWithEntity {
         if (!(world.getBlockEntity(pos) instanceof FactoryBlockEntity be)) {
             return ActionResult.PASS;
         }
+        if (player.isSneaking() && !player.getMainHandStack().isEmpty()
+                && FactoryBlockEntity.acceptsInput(player.getMainHandStack().getItem())) {
+            int offered = Math.min(player.getMainHandStack().getCount(), 64);
+            int accepted = be.addInput(player.getMainHandStack().getItem(), offered);
+            player.getMainHandStack().decrement(accepted);
+            player.sendMessage(Text.literal("Factory stock received: " + accepted + " × "
+                    + player.getMainHandStack().getItem().getName().getString()), true);
+            return ActionResult.CONSUME;
+        }
         be.markStructureDirty();
         if (!be.isStructureComplete()) {
             player.sendMessage(Text.literal(

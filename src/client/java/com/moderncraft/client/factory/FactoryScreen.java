@@ -111,10 +111,29 @@ public class FactoryScreen extends Screen {
                 lastState.shiftTicks + " / " + lastState.shiftDuration + " ticks",
                 barX + 4, barY + 4, 0xFFFFFFFF, true);
 
+        // Material stock.
+        ctx.drawText(this.textRenderer, "Material stock (sneak + right-click with an ingredient to supply):", 20, 106,
+                0xFFFFD166, true);
+        int stockY = 120;
+        if (lastState.inputIds.isEmpty()) {
+            ctx.drawText(this.textRenderer, "(empty — iron ingots, redstone and quartz are accepted)", 20, stockY,
+                    0xFF808080, true);
+        } else {
+            int stockX = 20;
+            for (int i = 0; i < lastState.inputIds.size(); i++) {
+                Identifier id = Identifier.tryParse(lastState.inputIds.get(i));
+                if (id == null) id = Identifier.of("minecraft", lastState.inputIds.get(i));
+                ctx.drawItem(new ItemStack(Registries.ITEM.get(id)), stockX, stockY);
+                ctx.drawText(this.textRenderer, "x" + lastState.inputCounts.get(i), stockX + 22, stockY + 8,
+                        0xFFE0E0E0, true);
+                stockX += 52;
+            }
+        }
+
         // Produced items.
-        ctx.drawText(this.textRenderer, "Produced this shift:", 20, 110,
+        ctx.drawText(this.textRenderer, "Produced this shift:", 20, 150,
                 0xFFFFFFFF, true);
-        int x = 20, y = 130;
+        int x = 20, y = 170;
         for (int i = 0; i < lastState.producedIds.size(); i++) {
             String idStr = lastState.producedIds.get(i);
             int count = lastState.producedCounts.get(i);
@@ -151,11 +170,15 @@ public class FactoryScreen extends Screen {
         public final int shiftDuration;
         public final List<String> producedIds = new ArrayList<>();
         public final List<Integer> producedCounts = new ArrayList<>();
+        public final List<String> inputIds = new ArrayList<>();
+        public final List<Integer> inputCounts = new ArrayList<>();
         public FactoryState(BlockPos pos, boolean sv, boolean ho, boolean iyo,
-                            int st, int sd, List<String> ids, List<Integer> counts) {
+                            int st, int sd, List<String> ids, List<Integer> counts,
+                            List<String> inputIds, List<Integer> inputCounts) {
             this.pos = pos; this.structureValid = sv; this.hasOwner = ho; this.isYouOwner = iyo;
             this.shiftTicks = st; this.shiftDuration = sd;
             this.producedIds.addAll(ids); this.producedCounts.addAll(counts);
+            this.inputIds.addAll(inputIds); this.inputCounts.addAll(inputCounts);
         }
     }
 }

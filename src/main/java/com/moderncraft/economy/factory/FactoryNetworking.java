@@ -77,7 +77,9 @@ public final class FactoryNetworking {
             int shiftTicks,
             int shiftDuration,
             List<String> producedIds,
-            List<Integer> producedCounts
+            List<Integer> producedCounts,
+            List<String> inputIds,
+            List<Integer> inputCounts
     ) implements CustomPayload {
         public static final CustomPayload.Id<FactoryStatePayload> ID = new CustomPayload.Id<>(STATE_ID);
         public static final PacketCodec<PacketByteBuf, FactoryStatePayload> CODEC =
@@ -94,6 +96,11 @@ public final class FactoryNetworking {
                                 buf.writeString(p.producedIds.get(i));
                                 buf.writeInt(p.producedCounts.get(i));
                             }
+                            buf.writeInt(p.inputIds.size());
+                            for (int i = 0; i < p.inputIds.size(); i++) {
+                                buf.writeString(p.inputIds.get(i));
+                                buf.writeInt(p.inputCounts.get(i));
+                            }
                         },
                         buf -> {
                             BlockPos pos = buf.readBlockPos();
@@ -109,7 +116,14 @@ public final class FactoryNetworking {
                                 ids.add(buf.readString());
                                 counts.add(buf.readInt());
                             }
-                            return new FactoryStatePayload(pos, sv, ho, iyo, st, sd, ids, counts);
+                            int inputN = buf.readInt();
+                            List<String> inputIds = new ArrayList<>(inputN);
+                            List<Integer> inputCounts = new ArrayList<>(inputN);
+                            for (int i = 0; i < inputN; i++) {
+                                inputIds.add(buf.readString());
+                                inputCounts.add(buf.readInt());
+                            }
+                            return new FactoryStatePayload(pos, sv, ho, iyo, st, sd, ids, counts, inputIds, inputCounts);
                         }
                 );
         @Override public Id<? extends CustomPayload> getId() { return ID; }
@@ -206,15 +220,16 @@ public final class FactoryNetworking {
             ids.add(net.minecraft.registry.Registries.ITEM.getId(s.getItem()).toString());
             counts.add(s.getCount());
         }
+        List<String> inputIds = new ArrayList<>();
+        List<Integer> inputCounts = new ArrayList<>();
+        for (var entry : be.inputStock().entrySet()) {
+            inputIds.add(net.minecraft.registry.Registries.ITEM.getId(entry.getKey()).toString());
+            inputCounts.add(entry.getValue());
+        }
         ServerPlayNetworking.send(player, new FactoryStatePayload(
-                be.getPos(),
-                be.isStructureComplete(),
-                be.hasOwner(),
-                be.isOwner(player.getUuid()),
-                be.shiftTicks(),
-                be.shiftDuration(),
-                ids,
-                counts
+                be.getPos(), be.isStructureComplete(), be.hasOwner(),
+                be.isOwner(player.getUuid()), be.shiftTicks(), be.shiftDuration(),
+                ids, counts, inputIds, inputCounts
         ));
     }
 

@@ -30,7 +30,9 @@ public final class FactoryToast {
                                 payload.shiftTicks(),
                                 payload.shiftDuration(),
                                 payload.producedIds(),
-                                payload.producedCounts()
+                                payload.producedCounts(),
+                                payload.inputIds(),
+                                payload.inputCounts()
                         );
                         FactoryScreen.onState(s);
                         // If the screen is currently open, rebuild the buttons
