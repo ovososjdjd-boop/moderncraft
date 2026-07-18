@@ -19,7 +19,7 @@ public class PhoneHomeScreen extends Screen {
 
     private static final int TILE_SIZE = 64;
     private static final int TILE_PAD = 16;
-    private static final int COLS = 2;
+    private static final int COLS = 3;
     private static final int ROWS = 2;
 
     public PhoneHomeScreen() {
@@ -36,9 +36,10 @@ public class PhoneHomeScreen extends Screen {
 
         addApp(startX, startY, Items.CATALOG, Text.literal("Catalog"), b -> openCatalog());
         addApp(startX + TILE_SIZE + TILE_PAD, startY, Items.BANK, Text.literal("Bank"), b -> openBank());
-        addApp(startX, startY + TILE_SIZE + TILE_PAD, Items.STOCK, Text.literal("Stock"), b -> openStock());
+        addApp(startX + 2 * (TILE_SIZE + TILE_PAD), startY, Items.STOCK, Text.literal("Stock"), b -> openStock());
+        addApp(startX, startY + TILE_SIZE + TILE_PAD, Items.JOBS, Text.literal("Jobs"), b -> openJobs());
         addApp(startX + TILE_SIZE + TILE_PAD, startY + TILE_SIZE + TILE_PAD,
-                Items.JOBS, Text.literal("Jobs"), b -> openJobs());
+                Items.ORDERS, Text.literal("Orders"), b -> openOrders());
 
         // Close button.
         addDrawableChild(ButtonWidget.builder(Text.literal("Close"), b -> this.close())
@@ -83,6 +84,10 @@ public class PhoneHomeScreen extends Screen {
         this.client.setScreen(new JobsScreen());
     }
 
+    private void openOrders() {
+        this.client.setScreen(new OrdersScreen());
+    }
+
     // --- inner types --------------------------------------------------------
 
     /** Hard-coded "app icons" — vanilla items stand in for our future custom ones. */
@@ -91,6 +96,7 @@ public class PhoneHomeScreen extends Screen {
         public static final ItemStack BANK    = new ItemStack(net.minecraft.item.Items.GOLD_INGOT);
         public static final ItemStack STOCK   = new ItemStack(net.minecraft.item.Items.EMERALD);
         public static final ItemStack JOBS    = new ItemStack(net.minecraft.item.Items.IRON_PICKAXE);
+        public static final ItemStack ORDERS  = new ItemStack(net.minecraft.item.Items.PAPER);
         private Items() {}
     }
 

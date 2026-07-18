@@ -152,6 +152,7 @@ public final class PhoneNetworking {
                     player.getServer(), player.getUuid());
             ServerPlayNetworking.send(player,
                     new OpenPhoneAckPayload(account.wallet(), account.bank()));
+            com.moderncraft.economy.pickup.PickupPointNetworking.syncOrders(player, player.getServer());
             // The client opens the screen on receiving the ACK.
         });
 
@@ -200,6 +201,7 @@ public final class PhoneNetworking {
             sendInfo(player, "Order placed: " + count + " × " + price.displayName()
                     + ". Collect it at a Pickup Point.");
             syncBalances(player, server);
+            com.moderncraft.economy.pickup.PickupPointNetworking.syncOrders(player, server);
         });
 
         ServerPlayNetworking.registerGlobalReceiver(BankActionPayload.ID, (payload, ctx) -> {
