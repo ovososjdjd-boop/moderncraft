@@ -59,7 +59,7 @@ To register a new category file in the bundle, edit `src/main/resources/data/mod
 ## How to add a new building (a Block + BlockEntity + Screen)
 
 1. **Create the block** in `com.moderncraft.economy.<subsystem>/<Name>Block.java`. Extend `BlockWithEntity`, override `getRenderType` to `MODEL` and `createBlockEntity` to return your BE.
-2. **Create the BlockEntity** in the same package. It should extend `BlockEntity` and have a constructor `BlockEntity(BlockEntityType, BlockPos, BlockState)`. Override `writeNbt` / `readNbt` for persistence.
+2. **Create the BlockEntity** in the same package. It should extend `BlockEntity` and have a constructor `BlockEntity(BlockEntityType, BlockPos, BlockState)`. For Minecraft 1.21.1 override `writeNbt(NbtCompound, RegistryWrapper.WrapperLookup)` / `readNbt(NbtCompound, RegistryWrapper.WrapperLookup)` for persistence.
 3. **Register the BlockEntityType** in `ModBlockEntities.java`. Use `FabricBlockEntityTypeBuilder.create(BE::new, yourBlock).build()`.
 4. **Create the BlockItem** (if you want it in the creative tab). `ModBlocks.registerWithItem(name, block)` does this for you. Or register manually in `ModBlocks`.
 5. **Add a creative tab entry** in `ModItemGroups.MOD_GROUP.entries(...)`.
