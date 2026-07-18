@@ -1,0 +1,23 @@
+[
+  { "id": "music_disc_13",            "buy": 800,  "sell": 600 },
+  { "id": "music_disc_cat",           "buy": 800,  "sell": 600 },
+  { "id": "music_disc_blocks",        "buy": 800,  "sell": 600 },
+  { "id": "music_disc_chirp",         "buy": 800,  "sell": 600 },
+  { "id": "music_disc_far",           "buy": 800,  "sell": 600 },
+  { "id": "music_disc_mall",          "buy": 800,  "sell": 600 },
+  { "id": "music_disc_mellohi",       "buy": 800,  "sell": 600 },
+  { "id": "music_disc_stal",          "buy": 800,  "sell": 600 },
+  { "id": "music_disc_strad",         "buy": 800,  "sell": 600 },
+  { "id": "music_disc_ward",          "buy": 800,  "sell": 600 },
+  { "id": "music_disc_11",            "buy": 800,  "sell": 600 },
+  { "id": "music_disc_wait",          "buy": 800,  "sell": 600 },
+  { "id": "music_disc_otherside",     "buy": 1200, "sell": 900 },
+  { "id": "music_disc_5",             "buy": 1200, "sell": 900 },
+  { "id": "music_disc_pigstep",       "buy": 1200, "sell": 900 },
+  { "id": "music_disc_relic",         "buy": 1200, "sell": 900 },
+  { "id": "music_disc_creator",       "buy": 1200, "sell": 900 },
+  { "id": "music_disc_precipice",     "buy": 1200, "sell": 900 },
+  { "id": "music_disc_tears",         "buy": 1200, "sell": 900 },
+  { "id": "music_disc_lava_chicken",  "buy": 1200, "sell": 900 },
+  { "id": "music_disc_bounce",        "buy": 1200, "sell": 900 }
+]
