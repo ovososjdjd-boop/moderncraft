@@ -7,6 +7,8 @@ import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.server.world.ServerWorld;
 import net.minecraft.text.Text;
+import net.minecraft.world.poi.PointOfInterestStorage;
+import net.minecraft.world.poi.PointOfInterestTypes;
 import net.minecraft.util.Formatting;
 import net.minecraft.util.math.BlockPos;
 
@@ -54,11 +56,19 @@ public final class VillageJoinHook {
      * Moderncraft residents have AI disabled and are deliberately ignored.
      */
     private static BlockPos findNearbyVillage(ServerWorld world, ServerPlayerEntity player) {
+        PointOfInterestStorage poi = world.getPointOfInterestStorage();
+        BlockPos probe = player.getBlockPos();
+        long homes = poi.count(entry -> entry.matchesKey(PointOfInterestTypes.HOME), probe, 96,
+                PointOfInterestStorage.OccupationStatus.ANY);
+        long meetingPoints = poi.count(entry -> entry.matchesKey(PointOfInterestTypes.MEETING), probe, 96,
+                PointOfInterestStorage.OccupationStatus.ANY);
+        if (homes < 2 && meetingPoints == 0) return null;
+
         List<VillagerEntity> nearby = world.getEntitiesByClass(
                 VillagerEntity.class,
                 player.getBoundingBox().expand(96.0),
                 villager -> !villager.isAiDisabled());
-        if (nearby.size() < 2) return null;
+        if (nearby.isEmpty()) return null;
 
         VillagerEntity seed = nearby.stream()
                 .min((a, b) -> Double.compare(a.squaredDistanceTo(player), b.squaredDistanceTo(player)))
@@ -69,7 +79,7 @@ public final class VillageJoinHook {
         for (VillagerEntity villager : nearby) {
             if (villager.squaredDistanceTo(seed) <= 64.0 * 64.0) cluster.add(villager);
         }
-        if (cluster.size() < 2) return null;
+        if (cluster.isEmpty()) return null;
 
         double x = cluster.stream().mapToDouble(VillagerEntity::getX).average().orElse(seed.getX());
         double z = cluster.stream().mapToDouble(VillagerEntity::getZ).average().orElse(seed.getZ());
