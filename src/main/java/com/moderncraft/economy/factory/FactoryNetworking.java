@@ -155,10 +155,19 @@ public final class FactoryNetworking {
                 sendState(player, be);
                 return;
             }
-            // Compute pay: 50 M\$ per produced item, plus a small completion bonus.
+            int workedTicks = be.shiftTicks();
             List<ItemStack> output = be.endShift();
-            int producedCount = output.stream().mapToInt(ItemStack::getCount).sum();
-            long pay = (long) producedCount * 50L + 100L;
+            // Wages follow the catalog value of the actual manufactured parts.
+            // This keeps factory work connected to the same economy as selling.
+            long pay = 100L;
+            for (ItemStack stack : output) {
+                var id = net.minecraft.registry.Registries.ITEM.getId(stack.getItem());
+                var price = com.moderncraft.economy.price.PriceCatalogView.lookupById(id);
+                pay += price.map(p -> Math.max(1L, (long) p.sell() * stack.getCount() / 4L))
+                        .orElse((long) stack.getCount() * 25L);
+            }
+            boolean completedShift = workedTicks >= be.shiftDuration();
+            if (completedShift) pay += 250L;
             EconomyService.creditWallet(server, player.getUuid(), pay);
 
             // Try to give the produced items to the player.
@@ -175,7 +184,9 @@ public final class FactoryNetworking {
                 PhoneNetworking.sendError(player, "Your inventory was full; "
                         + undelivered + " items were dropped at your feet.");
             }
-            PhoneNetworking.sendInfo(player, "Shift complete. Earned " + pay + " M\$.");
+            PhoneNetworking.sendInfo(player, completedShift
+                    ? "Shift complete. Earned " + pay + " M$ (completion bonus included)."
+                    : "Shift ended early. Earned " + pay + " M$." );
             PhoneNetworking.syncBalances(player, server);
             sendState(player, be);
         });
