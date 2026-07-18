@@ -50,6 +50,7 @@ public final class PhoneNetworking {
     public static final Identifier BALANCE_ID     = Moderncraft.id("phone_balance");
     public static final Identifier BANK_ID        = Moderncraft.id("phone_bank");
     public static final Identifier MESSAGE_ID     = Moderncraft.id("phone_message");
+    public static final Identifier TRANSFER_ID    = Moderncraft.id("phone_transfer");
 
     // --- record definitions -------------------------------------------------
 
@@ -117,6 +118,15 @@ public final class PhoneNetworking {
         @Override public Id<? extends CustomPayload> getId() { return ID; }
     }
 
+    public record TransferPayload(String playerName, long amount) implements CustomPayload {
+        public static final CustomPayload.Id<TransferPayload> ID = new CustomPayload.Id<>(TRANSFER_ID);
+        public static final PacketCodec<PacketByteBuf, TransferPayload> CODEC = PacketCodec.of(
+                (p, buf) -> { buf.writeString(p.playerName); buf.writeLong(p.amount); },
+                buf -> new TransferPayload(buf.readString(16), buf.readLong())
+        );
+        @Override public Id<? extends CustomPayload> getId() { return ID; }
+    }
+
     public record PhoneMessagePayload(String text, boolean isError) implements CustomPayload {
         public static final CustomPayload.Id<PhoneMessagePayload> ID =
                 new CustomPayload.Id<>(MESSAGE_ID);
@@ -139,6 +149,7 @@ public final class PhoneNetworking {
         PayloadTypeRegistry.playC2S().register(OpenPhoneRequestPayload.ID, OpenPhoneRequestPayload.CODEC);
         PayloadTypeRegistry.playC2S().register(BuyItemPayload.ID, BuyItemPayload.CODEC);
         PayloadTypeRegistry.playC2S().register(BankActionPayload.ID, BankActionPayload.CODEC);
+        PayloadTypeRegistry.playC2S().register(TransferPayload.ID, TransferPayload.CODEC);
         PayloadTypeRegistry.playS2C().register(OpenPhoneAckPayload.ID, OpenPhoneAckPayload.CODEC);
         PayloadTypeRegistry.playS2C().register(BalanceSyncPayload.ID, BalanceSyncPayload.CODEC);
         PayloadTypeRegistry.playS2C().register(PhoneMessagePayload.ID, PhoneMessagePayload.CODEC);
@@ -204,6 +215,34 @@ public final class PhoneNetworking {
             com.moderncraft.economy.pickup.PickupPointNetworking.syncOrders(player, server);
         });
 
+        ServerPlayNetworking.registerGlobalReceiver(TransferPayload.ID, (payload, ctx) -> {
+            ServerPlayerEntity sender = ctx.player();
+            MinecraftServer server = sender.getServer();
+            if (payload.amount() <= 0) {
+                sendError(sender, "Transfer amount must be positive.");
+                return;
+            }
+            ServerPlayerEntity target = server.getPlayerManager().getPlayer(payload.playerName());
+            if (target == null) {
+                sendError(sender, "That player is not online.");
+                return;
+            }
+            var result = com.moderncraft.economy.state.EconomyService.transferWallet(
+                    server, sender.getUuid(), target.getUuid(), payload.amount());
+            if (result != com.moderncraft.economy.state.EconomyService.Result.OK) {
+                sendError(sender, switch (result) {
+                    case NOT_ENOUGH_WALLET -> "Not enough money in wallet.";
+                    case INVALID_AMOUNT -> "Invalid transfer.";
+                    default -> "Transfer failed.";
+                });
+                return;
+            }
+            sendInfo(sender, "Transferred " + payload.amount() + " M$ to " + target.getName().getString() + ".");
+            sendInfo(target, "Received " + payload.amount() + " M$ from " + sender.getName().getString() + ".");
+            syncBalances(sender, server);
+            syncBalances(target, server);
+        });
+
         ServerPlayNetworking.registerGlobalReceiver(BankActionPayload.ID, (payload, ctx) -> {
             ServerPlayerEntity player = ctx.player();
             MinecraftServer server = player.getServer();
@@ -238,6 +277,10 @@ public final class PhoneNetworking {
 
     public static void sendBank(boolean deposit, long amount) {
         ClientPlayNetworking.send(new BankActionPayload(deposit, amount));
+    }
+
+    public static void sendTransfer(String playerName, long amount) {
+        ClientPlayNetworking.send(new TransferPayload(playerName, amount));
     }
 
     public static void syncBalances(ServerPlayerEntity player, MinecraftServer server) {

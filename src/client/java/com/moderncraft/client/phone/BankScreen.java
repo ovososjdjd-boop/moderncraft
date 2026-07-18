@@ -44,6 +44,8 @@ public class BankScreen extends Screen {
         addDrawableChild(ButtonWidget.builder(Text.literal("Max"), b -> setMax(true))
                 .dimensions(cx + 32, 160, 40, 18).build());
 
+        addDrawableChild(ButtonWidget.builder(Text.literal("Transfer"), b -> this.client.setScreen(new TransferScreen()))
+                .dimensions(cx - 45, 188, 90, 20).build());
         addDrawableChild(ButtonWidget.builder(Text.literal("Back"), b -> close())
                 .dimensions(8, this.height - 26, 60, 20).build());
     }
