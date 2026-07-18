@@ -148,7 +148,7 @@ public class FactoryScreen extends Screen {
         }
         if (lastState.producedIds.isEmpty()) {
             ctx.drawText(this.textRenderer, "(nothing yet — wait a bit)",
-                    20, 130, 0xFF808080, true);
+                    20, 170, 0xFF808080, true);
         }
 
         super.render(ctx, mouseX, mouseY, delta);
