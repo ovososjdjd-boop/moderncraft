@@ -1,0 +1,23 @@
+[
+  { "id": "wooden_sword",       "buy": 9,    "sell": 6 },
+  { "id": "stone_sword",        "buy": 18,   "sell": 13 },
+  { "id": "iron_sword",         "buy": 90,   "sell": 67 },
+  { "id": "golden_sword",       "buy": 45,   "sell": 33 },
+  { "id": "diamond_sword",      "buy": 360,  "sell": 270 },
+  { "id": "netherite_sword",    "buy": 1440, "sell": 1080 },
+  { "id": "mace",               "buy": 1440, "sell": 1080 },
+  { "id": "trident",            "buy": 800,  "sell": 600 },
+
+  { "id": "bow",                "buy": 60,   "sell": 45 },
+  { "id": "crossbow",           "buy": 90,   "sell": 67 },
+  { "id": "arrow",              "buy": 2,    "sell": 1 },
+  { "id": "spectral_arrow",     "buy": 6,    "sell": 4 },
+  { "id": "tipped_arrow",       "buy": 12,   "sell": 9 },
+
+  { "id": "shield",             "buy": 90,   "sell": 67 },
+  { "id": "totem_of_undying",   "buy": 12000,"sell": 9000 },
+  { "id": "elytra",             "buy": 8000, "sell": 6000 },
+  { "id": "wind_charge",        "buy": 36,   "sell": 27 },
+  { "id": "breeze_rod",         "buy": 60,   "sell": 45 },
+  { "id": "mace",               "buy": 1440, "sell": 1080 }
+]

@@ -1,0 +1,14 @@
+[
+  { "id": "iron_ingot",     "buy": 50,  "sell": 38 },
+  { "id": "iron_nugget",    "buy": 6,   "sell": 4 },
+  { "id": "iron_block",     "buy": 450, "sell": 340 },
+  { "id": "gold_ingot",     "buy": 90,  "sell": 70 },
+  { "id": "gold_nugget",    "buy": 11,  "sell": 8 },
+  { "id": "gold_block",     "buy": 810, "sell": 630 },
+  { "id": "copper_ingot",   "buy": 32,  "sell": 24 },
+  { "id": "copper_block",   "buy": 288, "sell": 216 },
+  { "id": "raw_iron_block", "buy": 108, "sell": 80 },
+  { "id": "raw_gold_block", "buy": 198, "sell": 144 },
+  { "id": "raw_copper_block", "buy": 72, "sell": 54 },
+  { "id": "netherite_scrap", "buy": 480, "sell": 360 }
+]

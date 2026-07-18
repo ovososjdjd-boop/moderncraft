@@ -1,0 +1,39 @@
+package com.moderncraft.economy.bank;
+
+import com.moderncraft.Moderncraft;
+import net.minecraft.block.AbstractBlock;
+import net.minecraft.block.Block;
+import net.minecraft.item.BlockItem;
+import net.minecraft.item.Item;
+import net.minecraft.registry.Registries;
+import net.minecraft.registry.Registry;
+import net.minecraft.registry.RegistryKey;
+import net.minecraft.registry.RegistryKeys;
+import net.minecraft.util.Identifier;
+
+/**
+ * The bank building's main block. Has the BankBlockEntity, opens the UI.
+ * Decorative blocks for the rest of the bank are vanilla.
+ */
+public final class BankBlocks {
+
+    private BankBlocks() {}
+
+    public static final Block BANK = register("bank",
+            new BankBlock(AbstractBlock.Settings.create()
+                    .strength(3.5f).requiresTool()));
+
+    private static Block register(String name, Block block) {
+        Identifier id = Identifier.of(Moderncraft.MOD_ID, name);
+        RegistryKey<Block> blockKey = RegistryKey.of(RegistryKeys.BLOCK, id);
+        RegistryKey<Item> itemKey = RegistryKey.of(RegistryKeys.ITEM, id);
+        Block registered = Registry.register(Registries.BLOCK, blockKey, block);
+        BlockItem item = new BlockItem(registered, new Item.Settings().registryKey(itemKey));
+        Registry.register(Registries.ITEM, itemKey, item);
+        return registered;
+    }
+
+    public static void register() {
+        Moderncraft.LOGGER.info("[moderncraft] registered 1 bank block");
+    }
+}

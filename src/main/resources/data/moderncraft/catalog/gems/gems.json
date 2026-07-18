@@ -1,0 +1,13 @@
+[
+  { "id": "diamond",        "buy": 80,  "sell": 60 },
+  { "id": "diamond_block",  "buy": 720, "sell": 540 },
+  { "id": "emerald",        "buy": 90,  "sell": 65 },
+  { "id": "emerald_block",  "buy": 810, "sell": 585 },
+  { "id": "lapis_block",    "buy": 81,  "sell": 60 },
+  { "id": "amethyst_shard", "buy": 28,  "sell": 20 },
+  { "id": "amethyst_block", "buy": 112, "sell": 80 },
+  { "id": "quartz",         "buy": 14,  "sell": 10 },
+  { "id": "quartz_block",   "buy": 126, "sell": 90 },
+  { "id": "resin_clump",    "buy": 18,  "sell": 13 },
+  { "id": "resin_block",    "buy": 162, "sell": 117 }
+]

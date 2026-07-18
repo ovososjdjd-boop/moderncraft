@@ -1,0 +1,146 @@
+{
+  "version": 1,
+  "schema": "moderncraft:price-catalog/categories@1",
+  "categories": [
+    {
+      "id": "ores",
+      "displayName": "Ores & Minerals",
+      "order": 10,
+      "icon": "minecraft:diamond",
+      "files": ["ores.json"]
+    },
+    {
+      "id": "ingots",
+      "displayName": "Ingots & Metals",
+      "order": 11,
+      "icon": "minecraft:iron_ingot",
+      "files": ["ingots.json"]
+    },
+    {
+      "id": "gems",
+      "displayName": "Gems & Special Materials",
+      "order": 12,
+      "icon": "minecraft:emerald",
+      "files": ["gems.json"]
+    },
+    {
+      "id": "food",
+      "displayName": "Food & Crops",
+      "order": 20,
+      "icon": "minecraft:golden_apple",
+      "files": ["food.json", "food_crops.json"]
+    },
+    {
+      "id": "wood",
+      "displayName": "Wood & Planks",
+      "order": 30,
+      "icon": "minecraft:oak_log",
+      "files": ["wood.json"]
+    },
+    {
+      "id": "stone",
+      "displayName": "Stone & Bricks",
+      "order": 31,
+      "icon": "minecraft:stone",
+      "files": ["stone.json"]
+    },
+    {
+      "id": "plants",
+      "displayName": "Plants & Flowers",
+      "order": 40,
+      "icon": "minecraft:oak_sapling",
+      "files": ["plants.json"]
+    },
+    {
+      "id": "mob_drops",
+      "displayName": "Mob Drops & Hunting",
+      "order": 50,
+      "icon": "minecraft:rotten_flesh",
+      "files": ["mob_drops.json"]
+    },
+    {
+      "id": "tools",
+      "displayName": "Tools",
+      "order": 60,
+      "icon": "minecraft:diamond_pickaxe",
+      "files": ["tools.json"]
+    },
+    {
+      "id": "weapons",
+      "displayName": "Weapons & Combat",
+      "order": 61,
+      "icon": "minecraft:diamond_sword",
+      "files": ["weapons.json"]
+    },
+    {
+      "id": "armor",
+      "displayName": "Armor & Trims",
+      "order": 62,
+      "icon": "minecraft:diamond_chestplate",
+      "files": ["armor.json"]
+    },
+    {
+      "id": "dyes",
+      "displayName": "Dyes & Pigments",
+      "order": 70,
+      "icon": "minecraft:red_dye",
+      "files": ["dyes.json"]
+    },
+    {
+      "id": "wool",
+      "displayName": "Wool & Carpets",
+      "order": 71,
+      "icon": "minecraft:white_wool",
+      "files": ["wool.json"]
+    },
+    {
+      "id": "concrete",
+      "displayName": "Concrete & Terracotta",
+      "order": 72,
+      "icon": "minecraft:white_concrete",
+      "files": ["concrete.json"]
+    },
+    {
+      "id": "glass",
+      "displayName": "Glass & Panes",
+      "order": 73,
+      "icon": "minecraft:glass",
+      "files": ["glass.json"]
+    },
+    {
+      "id": "decor",
+      "displayName": "Decoration",
+      "order": 80,
+      "icon": "minecraft:painting",
+      "files": ["decor.json"]
+    },
+    {
+      "id": "redstone",
+      "displayName": "Redstone & Technical",
+      "order": 90,
+      "icon": "minecraft:redstone",
+      "files": ["redstone.json"]
+    },
+    {
+      "id": "brewing",
+      "displayName": "Brewing & Potions",
+      "order": 100,
+      "icon": "minecraft:brewing_stand",
+      "files": ["brewing.json"]
+    },
+    {
+      "id": "special",
+      "displayName": "Special & Rare",
+      "order": 110,
+      "icon": "minecraft:nether_star",
+      "files": ["special.json", "spawn_eggs.json"]
+    },
+    {
+      "id": "music",
+      "displayName": "Music & Records",
+      "order": 120,
+      "icon": "minecraft:music_disc_cat",
+      "files": ["music.json"]
+    }
+  ]
+}

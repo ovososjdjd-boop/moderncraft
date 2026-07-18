@@ -1,0 +1,63 @@
+[
+  { "id": "leather_helmet",      "buy": 90,   "sell": 67 },
+  { "id": "leather_chestplate",  "buy": 144,  "sell": 108 },
+  { "id": "leather_leggings",    "buy": 126,  "sell": 94 },
+  { "id": "leather_boots",       "buy": 90,   "sell": 67 },
+  { "id": "leather_horse_armor", "buy": 180,  "sell": 135 },
+
+  { "id": "chainmail_helmet",    "buy": 144,  "sell": 108 },
+  { "id": "chainmail_chestplate","buy": 216,  "sell": 162 },
+  { "id": "chainmail_leggings",  "buy": 198,  "sell": 148 },
+  { "id": "chainmail_boots",     "buy": 144,  "sell": 108 },
+
+  { "id": "iron_helmet",         "buy": 270,  "sell": 202 },
+  { "id": "iron_chestplate",     "buy": 360,  "sell": 270 },
+  { "id": "iron_leggings",       "buy": 324,  "sell": 243 },
+  { "id": "iron_boots",          "buy": 270,  "sell": 202 },
+  { "id": "iron_horse_armor",    "buy": 540,  "sell": 405 },
+
+  { "id": "golden_helmet",       "buy": 180,  "sell": 135 },
+  { "id": "golden_chestplate",   "buy": 240,  "sell": 180 },
+  { "id": "golden_leggings",     "buy": 216,  "sell": 162 },
+  { "id": "golden_boots",        "buy": 180,  "sell": 135 },
+  { "id": "golden_horse_armor",  "buy": 360,  "sell": 270 },
+
+  { "id": "diamond_helmet",      "buy": 1080, "sell": 810 },
+  { "id": "diamond_chestplate",  "buy": 1440, "sell": 1080 },
+  { "id": "diamond_leggings",    "buy": 1296, "sell": 972 },
+  { "id": "diamond_boots",       "buy": 1080, "sell": 810 },
+  { "id": "diamond_horse_armor", "buy": 2160, "sell": 1620 },
+
+  { "id": "netherite_helmet",    "buy": 4320, "sell": 3240 },
+  { "id": "netherite_chestplate","buy": 5760, "sell": 4320 },
+  { "id": "netherite_leggings",  "buy": 5184, "sell": 3888 },
+  { "id": "netherite_boots",     "buy": 4320, "sell": 3240 },
+  { "id": "netherite_horse_armor","buy": 8640,"sell": 6480 },
+
+  { "id": "turtle_helmet",       "buy": 240,  "sell": 180 },
+  { "id": "elytra",              "buy": 8000, "sell": 6000 },
+
+  { "id": "armor_stand",         "buy": 90,   "sell": 67 },
+  { "id": "item_frame",          "buy": 18,   "sell": 13 },
+  { "id": "glow_item_frame",     "buy": 36,   "sell": 27 },
+  { "id": "painting",            "buy": 18,   "sell": 13 },
+
+  { "id": "sentry_armor_trim_smithing_template",     "buy": 24, "sell": 18 },
+  { "id": "dune_armor_trim_smithing_template",       "buy": 24, "sell": 18 },
+  { "id": "coast_armor_trim_smithing_template",      "buy": 24, "sell": 18 },
+  { "id": "wild_armor_trim_smithing_template",       "buy": 24, "sell": 18 },
+  { "id": "ward_armor_trim_smithing_template",       "buy": 24, "sell": 18 },
+  { "id": "eye_armor_trim_smithing_template",        "buy": 24, "sell": 18 },
+  { "id": "vex_armor_trim_smithing_template",        "buy": 24, "sell": 18 },
+  { "id": "tide_armor_trim_smithing_template",       "buy": 24, "sell": 18 },
+  { "id": "snout_armor_trim_smithing_template",      "buy": 24, "sell": 18 },
+  { "id": "rib_armor_trim_smithing_template",        "buy": 24, "sell": 18 },
+  { "id": "spire_armor_trim_smithing_template",      "buy": 24, "sell": 18 },
+  { "id": "silence_armor_trim_smithing_template",    "buy": 24, "sell": 18 },
+  { "id": "wayfinder_armor_trim_smithing_template",  "buy": 24, "sell": 18 },
+  { "id": "raiser_armor_trim_smithing_template",     "buy": 24, "sell": 18 },
+  { "id": "shaper_armor_trim_smithing_template",     "buy": 24, "sell": 18 },
+  { "id": "host_armor_trim_smithing_template",       "buy": 24, "sell": 18 },
+  { "id": "flow_armor_trim_smithing_template",       "buy": 24, "sell": 18 },
+  { "id": "bolt_armor_trim_smithing_template",       "buy": 24, "sell": 18 }
+]

@@ -1,0 +1,20 @@
+{
+  "item.moderncraft.phone": "Phone",
+  "block.moderncraft.pickup_point": "Pickup Point",
+  "block.moderncraft.factory_base": "Factory Base",
+  "block.moderncraft.factory_chimney": "Factory Chimney",
+  "block.moderncraft.factory_pipe": "Factory Pipe",
+  "block.moderncraft.factory_gear": "Factory Gear",
+  "block.moderncraft.factory_notice_board": "Factory Notice Board",
+  "block.moderncraft.bank": "Bank",
+  "block.moderncraft.stock_exchange": "Stock Exchange",
+  "block.moderncraft.cafe_board": "Cafe Notice Board",
+  "block.moderncraft.loader_board": "Loader Depot Notice Board",
+  "item.moderncraft.cafe_courier_spawn_egg": "Cafe Courier Spawn Egg",
+  "item.moderncraft.loader_spawn_egg": "Loader Spawn Egg",
+  "entity.moderncraft.cafe_courier": "Cafe Courier",
+  "entity.moderncraft.loader": "Loader",
+  "block.moderncraft.loader_target": "Loader Delivery Target",
+  "itemGroup.moderncraft.main": "Moderncraft",
+  "economy.moderncraft.currency": "M$"
+}

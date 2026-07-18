@@ -1,0 +1,5 @@
+{
+  "variants": {
+    "": { "model": "moderncraft:block/factory_chimney" }
+  }
+}
