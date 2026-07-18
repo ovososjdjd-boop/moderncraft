@@ -1,5 +1,6 @@
 package com.moderncraft.client.phone;
 
+import com.moderncraft.client.ModerncraftGui;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.gui.screen.Screen;
 import net.minecraft.client.gui.widget.ButtonWidget;
@@ -17,9 +18,8 @@ public final class JobsScreen extends Screen {
 
     @Override
     public void render(DrawContext context, int mouseX, int mouseY, float delta) {
-        context.fill(0, 0, this.width, this.height, 0xFF101418);
-        context.fill(0, 0, this.width, 34, 0xFF202830);
-        context.drawText(this.textRenderer, "Jobs", 10, 12, 0xFFFFFFFF, true);
+        ModerncraftGui.background(context, this.width, this.height);
+        ModerncraftGui.header(context, this.textRenderer, this.width, "Jobs", null);
 
         int x = this.width / 2 - 150;
         int y = 52;

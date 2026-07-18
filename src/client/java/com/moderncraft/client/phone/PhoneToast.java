@@ -1,5 +1,6 @@
 package com.moderncraft.client.phone;
 
+import com.moderncraft.client.pickup.PickupPointScreen;
 import com.moderncraft.economy.phone.PhoneNetworking;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 import net.minecraft.client.MinecraftClient;
@@ -27,6 +28,9 @@ public final class PhoneToast {
                         Text body = Text.literal(payload.text());
                         client.getToastManager().addToast(
                                 SystemToast.create(client, SystemToast.Type.NARRATOR_TOGGLE, title, body));
+                        if (client.currentScreen instanceof PickupPointScreen screen && !payload.isError()) {
+                            screen.refresh();
+                        }
                     });
                 });
 

@@ -1,5 +1,6 @@
 package com.moderncraft.client.phone;
 
+import com.moderncraft.client.ModerncraftGui;
 import com.moderncraft.economy.phone.PhoneNetworking;
 import com.moderncraft.economy.price.ItemPrice;
 import com.moderncraft.economy.price.PriceCatalog;
@@ -30,6 +31,7 @@ public class CatalogScreen extends Screen {
 
     private String currentCategoryId = "ores";
     private int scroll = 0;
+    private int purchaseCount = 1;
 
     public CatalogScreen() {
         super(Text.literal("Catalog"));
@@ -39,6 +41,28 @@ public class CatalogScreen extends Screen {
     protected void init() {
         rebuildTabs();
         rebuildGrid();
+        int quantityY = this.height - 52;
+        addDrawableChild(ButtonWidget.builder(Text.literal("−"), b -> {
+            purchaseCount = Math.max(1, purchaseCount - 1);
+            clearChildren();
+            init();
+        }).dimensions(TAB_W + 18, quantityY, 22, 20).build());
+        addDrawableChild(ButtonWidget.builder(Text.literal("+1"), b -> {
+            purchaseCount = Math.min(2304, purchaseCount + 1);
+            clearChildren();
+            init();
+        }).dimensions(TAB_W + 44, quantityY, 32, 20).build());
+        addDrawableChild(ButtonWidget.builder(Text.literal("+16"), b -> {
+            purchaseCount = Math.min(2304, purchaseCount + 16);
+            clearChildren();
+            init();
+        }).dimensions(TAB_W + 80, quantityY, 36, 20).build());
+        addDrawableChild(ButtonWidget.builder(Text.literal("+64"), b -> {
+            purchaseCount = Math.min(2304, purchaseCount + 64);
+            clearChildren();
+            init();
+        }).dimensions(TAB_W + 120, quantityY, 36, 20).build());
+
         // Back button.
         addDrawableChild(ButtonWidget.builder(Text.literal("Back"), b -> close())
                 .dimensions(8, this.height - 26, 60, 20)
@@ -100,14 +124,11 @@ public class CatalogScreen extends Screen {
 
     @Override
     public void render(DrawContext ctx, int mouseX, int mouseY, float delta) {
-        ctx.fill(0, 0, this.width, this.height, 0xFF101418);
-        // Top bar.
-        ctx.fill(0, 0, this.width, 28, 0xFF202830);
-        ctx.drawText(this.textRenderer, "Catalog — " + currentCategoryId,
-                8, 10, 0xFFFFFFFF, true);
-        String bal = "Wallet: " + fmt(PhoneClientState.wallet) + " M$";
-        ctx.drawText(this.textRenderer, bal, this.width - this.textRenderer.getWidth(bal) - 8, 10,
-                0xFFA0E0A0, true);
+        ModerncraftGui.background(ctx, this.width, this.height);
+        ModerncraftGui.header(ctx, this.textRenderer, this.width, "Catalog — " + currentCategoryId,
+                ModerncraftGui.balance(PhoneClientState.wallet, PhoneClientState.bank));
+        ctx.drawText(this.textRenderer, "Order quantity: " + purchaseCount,
+                TAB_W + 18, this.height - 67, ModerncraftGui.WARNING, true);
         // Tab strip background.
         ctx.fill(0, 28, TAB_W + 6, this.height, 0xFF181C22);
         super.render(ctx, mouseX, mouseY, delta);
@@ -145,13 +166,13 @@ public class CatalogScreen extends Screen {
     }
 
     /** A single item tile in the catalog. */
-    public static class PriceTile extends ButtonWidget {
+    public class PriceTile extends ButtonWidget {
         private final ItemPrice price;
         public final ItemStack icon;
 
         public PriceTile(int x, int y, int size, ItemPrice price) {
             super(x, y, size, size, Text.literal(price.displayName()),
-                    b -> PhoneNetworking.sendBuy(price.id(), 1),
+                    b -> PhoneNetworking.sendBuy(price.id(), purchaseCount),
                     DEFAULT_NARRATION_SUPPLIER);
             this.price = price;
             this.icon = new ItemStack(PhoneClientState.itemOf(price.id()));

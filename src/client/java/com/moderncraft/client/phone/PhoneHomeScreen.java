@@ -1,5 +1,6 @@
 package com.moderncraft.client.phone;
 
+import com.moderncraft.client.ModerncraftGui;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.gui.screen.Screen;
 import net.minecraft.client.gui.widget.ButtonWidget;
@@ -51,15 +52,9 @@ public class PhoneHomeScreen extends Screen {
 
     @Override
     public void render(DrawContext ctx, int mouseX, int mouseY, float delta) {
-        // Background — solid dark colour so the phone feels "on".
-        ctx.fill(0, 0, this.width, this.height, 0xFF101418);
-
-        // Status bar at the top: title + balance.
-        ctx.fill(0, 0, this.width, 36, 0xFF202830);
-        ctx.drawText(this.textRenderer, "Phone", 10, 12, 0xFFFFFFFF, true);
-        String bal = "Wallet: " + fmt(PhoneClientState.wallet) + " M$  |  Bank: " + fmt(PhoneClientState.bank) + " M$";
-        ctx.drawText(this.textRenderer, bal, this.width - this.textRenderer.getWidth(bal) - 10, 12,
-                0xFFA0E0A0, true);
+        ModerncraftGui.background(ctx, this.width, this.height);
+        ModerncraftGui.header(ctx, this.textRenderer, this.width, "Phone",
+                ModerncraftGui.balance(PhoneClientState.wallet, PhoneClientState.bank));
 
         // Each app tile is drawn by the AppTileButton itself, but we render the
         // label below the grid here for clarity.
