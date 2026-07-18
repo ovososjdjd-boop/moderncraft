@@ -221,6 +221,8 @@ public final class PhoneNetworking {
             // This prevents remote buying from becoming an inventory teleport and
             // gives the delivery system a real economic role.
             state.addOrder(player.getUuid(), new com.moderncraft.economy.state.PurchaseOrder(id, count));
+            com.moderncraft.economy.state.EconomyService.recordEvent(server, player.getUuid(), "purchase", total,
+                    count + " × " + price.displayName());
             sendInfo(player, "Order placed: " + count + " × " + price.displayName()
                     + ". Collect it at a Pickup Point.");
             syncBalances(player, server);

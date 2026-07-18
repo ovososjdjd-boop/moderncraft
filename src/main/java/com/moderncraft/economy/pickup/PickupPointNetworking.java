@@ -157,6 +157,8 @@ public final class PickupPointNetworking {
 
             long earned = (long) price.sell() * actuallySold;
             com.moderncraft.economy.state.EconomyService.creditWallet(server, player.getUuid(), earned);
+            com.moderncraft.economy.state.EconomyService.recordEvent(server, player.getUuid(), "sale", earned,
+                    actuallySold + " × " + price.displayName());
 
             // Bump the block-entity's totalSold stat if we can find it.
             BlockPos pos = findPickupNear(player);
@@ -204,6 +206,8 @@ public final class PickupPointNetworking {
                 return;
             }
             com.moderncraft.economy.state.EconomyService.creditWallet(server, player.getUuid(), totalEarned);
+            com.moderncraft.economy.state.EconomyService.recordEvent(server, player.getUuid(), "sale", totalEarned,
+                    "Bulk sale: " + totalItems + " items");
 
             BlockPos pos = findPickupNear(player);
             if (pos != null) {

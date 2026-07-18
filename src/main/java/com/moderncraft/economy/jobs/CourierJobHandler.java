@@ -48,6 +48,8 @@ public final class CourierJobHandler {
             }
             remove(player, order.itemId(), order.count());
             EconomyService.creditWallet(serverPlayer.getServer(), serverPlayer.getUuid(), order.reward());
+            EconomyService.recordEvent(serverPlayer.getServer(), serverPlayer.getUuid(), "courier", order.reward(),
+                    "Parcel delivered");
             courier.completeOrder();
             PhoneNetworking.sendInfo(serverPlayer, "Parcel delivered to the villager. Earned " + order.reward() + " M$.");
             PhoneNetworking.syncBalances(serverPlayer, serverPlayer.getServer());

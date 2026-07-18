@@ -88,6 +88,8 @@ public class LoaderTargetBlock extends BlockWithEntity {
         long reward = order.reward();
         com.moderncraft.economy.state.EconomyService.creditWallet(
                 sp.getServer(), sp.getUuid(), reward);
+        com.moderncraft.economy.state.EconomyService.recordEvent(sp.getServer(), sp.getUuid(), "loader", reward,
+                "Heavy load delivered");
         com.moderncraft.economy.phone.PhoneNetworking.sendInfo(sp,
                 "Delivered " + order.count() + " × " + displayNameOf(order.itemId())
                         + ". Earned " + reward + " M$.");

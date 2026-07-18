@@ -183,6 +183,8 @@ public final class FactoryNetworking {
             boolean completedShift = workedTicks >= be.shiftDuration();
             if (completedShift) pay += 250L;
             EconomyService.creditWallet(server, player.getUuid(), pay);
+            EconomyService.recordEvent(server, player.getUuid(), "factory", pay,
+                    completedShift ? "Completed factory shift" : "Early factory shift end");
 
             // Try to give the produced items to the player.
             int undelivered = 0;

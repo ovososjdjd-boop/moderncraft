@@ -96,6 +96,10 @@ public final class EconomyService {
         return Result.OK;
     }
 
+    public static void recordEvent(MinecraftServer server, UUID playerId, String type, long amount, String note) {
+        record(server, playerId, type, amount, note);
+    }
+
     private static void record(MinecraftServer server, UUID playerId, String type, long amount, String note) {
         long time = server.getOverworld() == null ? 0L : server.getOverworld().getTime();
         WorldEconomyState.get(server).appendLedger(playerId, new EconomyLedgerEntry(type, amount, time, note));

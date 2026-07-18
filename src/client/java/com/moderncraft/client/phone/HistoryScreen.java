@@ -27,7 +27,9 @@ public final class HistoryScreen extends Screen {
         for (int i = PhoneClientState.history.size() - 1; i >= 0 && y < this.height - 42; i--) {
             PhoneClientState.HistoryEntry entry = PhoneClientState.history.get(i);
             boolean positive = entry.type().equals("credit") || entry.type().equals("deposit")
-                    || entry.type().equals("transfer_in");
+                    || entry.type().equals("transfer_in") || entry.type().equals("sale")
+                    || entry.type().equals("factory") || entry.type().equals("courier")
+                    || entry.type().equals("loader");
             ModerncraftGui.panel(context, 12, y, this.width - 24, 28);
             String sign = positive ? "+" : "−";
             int color = positive ? ModerncraftGui.BUY : ModerncraftGui.SELL;
