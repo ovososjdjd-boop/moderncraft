@@ -8,7 +8,7 @@ import net.minecraft.text.Text;
 
 /** In-game job directory. Jobs are accepted at their physical buildings/NPCs. */
 public final class JobsScreen extends Screen {
-    public JobsScreen() { super(Text.literal("Moderncraft Jobs")); }
+    public JobsScreen() { super(Text.translatable("gui.moderncraft.jobs")); }
 
     @Override
     protected void init() {

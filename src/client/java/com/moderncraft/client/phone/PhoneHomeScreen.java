@@ -23,7 +23,7 @@ public class PhoneHomeScreen extends Screen {
     private static final int ROWS = 2;
 
     public PhoneHomeScreen() {
-        super(Text.literal("Phone"));
+        super(Text.translatable("gui.moderncraft.phone"));
     }
 
     @Override
@@ -34,14 +34,14 @@ public class PhoneHomeScreen extends Screen {
         int startX = (this.width - gridW) / 2;
         int startY = (this.height - gridH) / 2;
 
-        addApp(startX, startY, Items.CATALOG, Text.literal("Catalog"), b -> openCatalog());
-        addApp(startX + TILE_SIZE + TILE_PAD, startY, Items.BANK, Text.literal("Bank"), b -> openBank());
-        addApp(startX + 2 * (TILE_SIZE + TILE_PAD), startY, Items.STOCK, Text.literal("Stock"), b -> openStock());
-        addApp(startX, startY + TILE_SIZE + TILE_PAD, Items.JOBS, Text.literal("Jobs"), b -> openJobs());
+        addApp(startX, startY, Items.CATALOG, Text.translatable("gui.moderncraft.catalog"), b -> openCatalog());
+        addApp(startX + TILE_SIZE + TILE_PAD, startY, Items.BANK, Text.translatable("gui.moderncraft.bank"), b -> openBank());
+        addApp(startX + 2 * (TILE_SIZE + TILE_PAD), startY, Items.STOCK, Text.translatable("gui.moderncraft.stock"), b -> openStock());
+        addApp(startX, startY + TILE_SIZE + TILE_PAD, Items.JOBS, Text.translatable("gui.moderncraft.jobs"), b -> openJobs());
         addApp(startX + TILE_SIZE + TILE_PAD, startY + TILE_SIZE + TILE_PAD,
-                Items.ORDERS, Text.literal("Orders"), b -> openOrders());
+                Items.ORDERS, Text.translatable("gui.moderncraft.orders"), b -> openOrders());
         addApp(startX + 2 * (TILE_SIZE + TILE_PAD), startY + TILE_SIZE + TILE_PAD,
-                Items.HISTORY, Text.literal("History"), b -> openHistory());
+                Items.HISTORY, Text.translatable("gui.moderncraft.history"), b -> openHistory());
 
         // Close button.
         addDrawableChild(ButtonWidget.builder(Text.literal("Close"), b -> this.close())
@@ -56,7 +56,7 @@ public class PhoneHomeScreen extends Screen {
     @Override
     public void render(DrawContext ctx, int mouseX, int mouseY, float delta) {
         ModerncraftGui.background(ctx, this.width, this.height);
-        ModerncraftGui.header(ctx, this.textRenderer, this.width, "Phone",
+        ModerncraftGui.header(ctx, this.textRenderer, this.width, Text.translatable("gui.moderncraft.phone").getString(),
                 ModerncraftGui.balance(PhoneClientState.wallet, PhoneClientState.bank));
 
         // Each app tile is drawn by the AppTileButton itself, but we render the

@@ -8,11 +8,11 @@ import net.minecraft.text.Text;
 
 /** Economy journal screen. The authoritative rows are synchronized by the server in a later snapshot packet. */
 public final class HistoryScreen extends Screen {
-    public HistoryScreen() { super(Text.literal("History")); }
+    public HistoryScreen() { super(Text.translatable("gui.moderncraft.history")); }
 
     @Override
     protected void init() {
-        addDrawableChild(ButtonWidget.builder(Text.literal("Back"), button -> close())
+        addDrawableChild(ButtonWidget.builder(Text.translatable("gui.moderncraft.back"), button -> close())
                 .dimensions(8, this.height - 28, 70, 20).build());
     }
 

@@ -9,11 +9,11 @@ import net.minecraft.text.Text;
 
 /** Paid phone orders. Collection is intentionally only possible at a physical Pickup Point. */
 public final class OrdersScreen extends Screen {
-    public OrdersScreen() { super(Text.literal("Orders")); }
+    public OrdersScreen() { super(Text.translatable("gui.moderncraft.orders")); }
 
     @Override
     protected void init() {
-        addDrawableChild(ButtonWidget.builder(Text.literal("Back"), button -> close())
+        addDrawableChild(ButtonWidget.builder(Text.translatable("gui.moderncraft.back"), button -> close())
                 .dimensions(8, this.height - 28, 70, 20).build());
     }
 

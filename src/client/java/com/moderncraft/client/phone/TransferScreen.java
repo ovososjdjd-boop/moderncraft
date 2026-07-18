@@ -14,7 +14,7 @@ public final class TransferScreen extends Screen {
     private TextFieldWidget playerField;
     private TextFieldWidget amountField;
 
-    public TransferScreen() { super(Text.literal("Transfer")); }
+    public TransferScreen() { super(Text.translatable("gui.moderncraft.transfer")); }
 
     @Override
     protected void init() {
@@ -28,7 +28,7 @@ public final class TransferScreen extends Screen {
         addSelectableChild(amountField);
         addDrawableChild(ButtonWidget.builder(Text.literal("Send").formatted(Formatting.GREEN), b -> send())
                 .dimensions(cx - 100, 158, 200, 20).build());
-        addDrawableChild(ButtonWidget.builder(Text.literal("Back"), b -> close())
+        addDrawableChild(ButtonWidget.builder(Text.translatable("gui.moderncraft.back"), b -> close())
                 .dimensions(8, this.height - 28, 70, 20).build());
     }
 
