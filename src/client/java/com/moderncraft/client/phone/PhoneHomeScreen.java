@@ -5,7 +5,6 @@ import net.minecraft.client.gui.screen.Screen;
 import net.minecraft.client.gui.widget.ButtonWidget;
 import net.minecraft.item.ItemStack;
 import net.minecraft.text.Text;
-import net.minecraft.util.Formatting;
 import net.minecraft.util.Identifier;
 
 /**
@@ -86,10 +85,7 @@ public class PhoneHomeScreen extends Screen {
     }
 
     private void openJobs() {
-        this.client.setScreen(new PlaceholderScreen("Jobs",
-                Text.literal("Courier: take an order at the cafe and deliver it to a villager. " +
-                        "Loader: accept a heavy-load order and deliver it to the highlighted target. " +
-                        "Factory: start a shift at the factory base.")));
+        this.client.setScreen(new JobsScreen());
     }
 
     // --- inner types --------------------------------------------------------
