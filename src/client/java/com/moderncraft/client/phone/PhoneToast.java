@@ -40,6 +40,9 @@ public final class PhoneToast {
                             PhoneClientState.onBalanceSync(payload.wallet(), payload.bank()));
                 });
 
+        ClientPlayNetworking.registerGlobalReceiver(PhoneNetworking.HistoryPayload.ID,
+                (payload, ctx) -> ctx.client().execute(() -> PhoneClientState.onHistorySync(payload.encoded())));
+
         ClientPlayNetworking.registerGlobalReceiver(PhoneNetworking.OpenPhoneAckPayload.ID,
                 (payload, ctx) -> {
                     ctx.client().execute(() -> {

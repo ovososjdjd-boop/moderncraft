@@ -40,6 +40,8 @@ public class PhoneHomeScreen extends Screen {
         addApp(startX, startY + TILE_SIZE + TILE_PAD, Items.JOBS, Text.literal("Jobs"), b -> openJobs());
         addApp(startX + TILE_SIZE + TILE_PAD, startY + TILE_SIZE + TILE_PAD,
                 Items.ORDERS, Text.literal("Orders"), b -> openOrders());
+        addApp(startX + 2 * (TILE_SIZE + TILE_PAD), startY + TILE_SIZE + TILE_PAD,
+                Items.HISTORY, Text.literal("History"), b -> openHistory());
 
         // Close button.
         addDrawableChild(ButtonWidget.builder(Text.literal("Close"), b -> this.close())
@@ -88,6 +90,10 @@ public class PhoneHomeScreen extends Screen {
         this.client.setScreen(new OrdersScreen());
     }
 
+    private void openHistory() {
+        this.client.setScreen(new HistoryScreen());
+    }
+
     // --- inner types --------------------------------------------------------
 
     /** Hard-coded "app icons" — vanilla items stand in for our future custom ones. */
@@ -97,6 +103,7 @@ public class PhoneHomeScreen extends Screen {
         public static final ItemStack STOCK   = new ItemStack(net.minecraft.item.Items.EMERALD);
         public static final ItemStack JOBS    = new ItemStack(net.minecraft.item.Items.IRON_PICKAXE);
         public static final ItemStack ORDERS  = new ItemStack(net.minecraft.item.Items.PAPER);
+        public static final ItemStack HISTORY = new ItemStack(net.minecraft.item.Items.WRITABLE_BOOK);
         private Items() {}
     }
 

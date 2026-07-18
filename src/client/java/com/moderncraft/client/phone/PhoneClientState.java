@@ -23,8 +23,22 @@ public final class PhoneClientState {
     public static long wallet = 0L;
     public static long bank = 0L;
     public static final List<PendingOrder> pendingOrders = new ArrayList<>();
+    public static final List<HistoryEntry> history = new ArrayList<>();
 
     public record PendingOrder(String itemId, int count) {}
+    public record HistoryEntry(String type, long amount, long timestamp, String note) {}
+
+    public static void onHistorySync(String encoded) {
+        history.clear();
+        if (encoded == null || encoded.isBlank()) return;
+        for (String row : encoded.split(";", -1)) {
+            String[] parts = row.split("\\|", 4);
+            if (parts.length == 4) {
+                try { history.add(new HistoryEntry(parts[0], Long.parseLong(parts[1]), Long.parseLong(parts[2]), parts[3])); }
+                catch (NumberFormatException ignored) { }
+            }
+        }
+    }
 
     public static void onOrdersSync(String encoded) {
         pendingOrders.clear();

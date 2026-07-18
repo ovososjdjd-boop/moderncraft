@@ -35,6 +35,7 @@ public final class WorldEconomyState extends PersistentState {
 
     private final Map<UUID, PlayerAccount> accounts = new HashMap<>();
     private final Map<UUID, List<PurchaseOrder>> pendingOrders = new HashMap<>();
+    private final Map<UUID, List<EconomyLedgerEntry>> ledger = new HashMap<>();
 
     public static final PersistentStateType<WorldEconomyState> TYPE = new PersistentStateType<>(
             Identifier.of(Moderncraft.MOD_ID, "world_economy"),
@@ -101,6 +102,17 @@ public final class WorldEconomyState extends PersistentState {
         return orders == null ? List.of() : List.copyOf(orders);
     }
 
+    public List<EconomyLedgerEntry> ledger(UUID playerId) {
+        return List.copyOf(ledger.getOrDefault(playerId, List.of()));
+    }
+
+    public void appendLedger(UUID playerId, EconomyLedgerEntry entry) {
+        List<EconomyLedgerEntry> entries = ledger.computeIfAbsent(playerId, ignored -> new ArrayList<>());
+        entries.add(entry);
+        if (entries.size() > 100) entries.remove(0);
+        markDirty();
+    }
+
     // --- persistence plumbing ------------------------------------------------
 
     public static WorldEconomyState fromNbt(net.minecraft.nbt.NbtCompound nbt,
@@ -119,6 +131,24 @@ public final class WorldEconomyState extends PersistentState {
                     state.accounts.put(id, account);
                 } catch (Exception e) {
                     Moderncraft.LOGGER.warn("Skipping corrupt account for {}: {}", key, e.toString());
+                }
+            }
+        }
+        if (nbt.contains("ledger")) {
+            net.minecraft.nbt.NbtCompound storedLedger = nbt.getCompound("ledger");
+            for (String key : storedLedger.getKeys()) {
+                try {
+                    UUID id = UUID.fromString(key);
+                    net.minecraft.nbt.NbtList list = storedLedger.getList(key, net.minecraft.nbt.NbtElement.COMPOUND_TYPE);
+                    List<EconomyLedgerEntry> entries = new ArrayList<>();
+                    for (net.minecraft.nbt.NbtElement element : list) {
+                        net.minecraft.nbt.NbtCompound row = (net.minecraft.nbt.NbtCompound) element;
+                        entries.add(new EconomyLedgerEntry(row.getString("type"), row.getLong("amount"),
+                                row.getLong("time"), row.getString("note")));
+                    }
+                    if (!entries.isEmpty()) state.ledger.put(id, entries);
+                } catch (Exception e) {
+                    Moderncraft.LOGGER.warn("Skipping corrupt ledger for {}: {}", key, e.toString());
                 }
             }
         }
@@ -153,6 +183,20 @@ public final class WorldEconomyState extends PersistentState {
             inner.put(entry.getKey().toString(), encoded);
         }
         nbt.put("accounts", inner);
+        net.minecraft.nbt.NbtCompound storedLedger = new net.minecraft.nbt.NbtCompound();
+        for (Map.Entry<UUID, List<EconomyLedgerEntry>> entry : ledger.entrySet()) {
+            net.minecraft.nbt.NbtList list = new net.minecraft.nbt.NbtList();
+            for (EconomyLedgerEntry row : entry.getValue()) {
+                net.minecraft.nbt.NbtCompound encoded = new net.minecraft.nbt.NbtCompound();
+                encoded.putString("type", row.type());
+                encoded.putLong("amount", row.amount());
+                encoded.putLong("time", row.timestamp());
+                encoded.putString("note", row.note());
+                list.add(encoded);
+            }
+            if (!list.isEmpty()) storedLedger.put(entry.getKey().toString(), list);
+        }
+        nbt.put("ledger", storedLedger);
         net.minecraft.nbt.NbtCompound orders = new net.minecraft.nbt.NbtCompound();
         for (Map.Entry<UUID, List<PurchaseOrder>> entry : pendingOrders.entrySet()) {
             net.minecraft.nbt.NbtList list = new net.minecraft.nbt.NbtList();

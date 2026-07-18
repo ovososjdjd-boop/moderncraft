@@ -51,6 +51,7 @@ public final class PhoneNetworking {
     public static final Identifier BANK_ID        = Moderncraft.id("phone_bank");
     public static final Identifier MESSAGE_ID     = Moderncraft.id("phone_message");
     public static final Identifier TRANSFER_ID    = Moderncraft.id("phone_transfer");
+    public static final Identifier HISTORY_ID     = Moderncraft.id("phone_history");
 
     // --- record definitions -------------------------------------------------
 
@@ -127,6 +128,15 @@ public final class PhoneNetworking {
         @Override public Id<? extends CustomPayload> getId() { return ID; }
     }
 
+    public record HistoryPayload(String encoded) implements CustomPayload {
+        public static final CustomPayload.Id<HistoryPayload> ID = new CustomPayload.Id<>(HISTORY_ID);
+        public static final PacketCodec<PacketByteBuf, HistoryPayload> CODEC = PacketCodec.of(
+                (p, buf) -> buf.writeString(p.encoded),
+                buf -> new HistoryPayload(buf.readString(32767))
+        );
+        @Override public Id<? extends CustomPayload> getId() { return ID; }
+    }
+
     public record PhoneMessagePayload(String text, boolean isError) implements CustomPayload {
         public static final CustomPayload.Id<PhoneMessagePayload> ID =
                 new CustomPayload.Id<>(MESSAGE_ID);
@@ -152,6 +162,7 @@ public final class PhoneNetworking {
         PayloadTypeRegistry.playC2S().register(TransferPayload.ID, TransferPayload.CODEC);
         PayloadTypeRegistry.playS2C().register(OpenPhoneAckPayload.ID, OpenPhoneAckPayload.CODEC);
         PayloadTypeRegistry.playS2C().register(BalanceSyncPayload.ID, BalanceSyncPayload.CODEC);
+        PayloadTypeRegistry.playS2C().register(HistoryPayload.ID, HistoryPayload.CODEC);
         PayloadTypeRegistry.playS2C().register(PhoneMessagePayload.ID, PhoneMessagePayload.CODEC);
     }
 
@@ -164,6 +175,7 @@ public final class PhoneNetworking {
             ServerPlayNetworking.send(player,
                     new OpenPhoneAckPayload(account.wallet(), account.bank()));
             com.moderncraft.economy.pickup.PickupPointNetworking.syncOrders(player, player.getServer());
+            syncHistory(player, player.getServer());
             // The client opens the screen on receiving the ACK.
         });
 
@@ -286,6 +298,20 @@ public final class PhoneNetworking {
     public static void syncBalances(ServerPlayerEntity player, MinecraftServer server) {
         var account = com.moderncraft.economy.state.EconomyService.view(server, player.getUuid());
         ServerPlayNetworking.send(player, new BalanceSyncPayload(account.wallet(), account.bank()));
+        syncHistory(player, server);
+    }
+
+    public static void syncHistory(ServerPlayerEntity player, MinecraftServer server) {
+        var entries = com.moderncraft.economy.state.WorldEconomyState.get(server).ledger(player.getUuid());
+        StringBuilder encoded = new StringBuilder();
+        int start = Math.max(0, entries.size() - 30);
+        for (int i = start; i < entries.size(); i++) {
+            var entry = entries.get(i);
+            if (encoded.length() > 0) encoded.append(';');
+            encoded.append(entry.type()).append('|').append(entry.amount()).append('|')
+                    .append(entry.timestamp()).append('|').append(entry.note().replace(";", ",").replace("|", "/"));
+        }
+        ServerPlayNetworking.send(player, new HistoryPayload(encoded.toString()));
     }
 
     public static void sendInfo(ServerPlayerEntity player, String msg) {
