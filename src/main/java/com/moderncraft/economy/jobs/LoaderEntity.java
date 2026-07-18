@@ -73,6 +73,7 @@ public class LoaderEntity extends PathAwareEntity {
             nbt.putInt("OrderX", activeOrder.destination().getX());
             nbt.putInt("OrderY", activeOrder.destination().getY());
             nbt.putInt("OrderZ", activeOrder.destination().getZ());
+            nbt.putLong("OrderExpiresAt", activeOrder.expiresAt());
         }
     }
 
@@ -80,9 +81,11 @@ public class LoaderEntity extends PathAwareEntity {
     protected void readCustomDataFromNbt(NbtCompound nbt) {
         super.readCustomDataFromNbt(nbt);
         ticksUntilNextOrder = nbt.getInt("TicksUntilNextOrder");
-        if (nbt.contains("OrderItem") && nbt.contains("OrderX") && nbt.contains("OrderY") && nbt.contains("OrderZ")) {
+        if (nbt.contains("OrderItem") && nbt.contains("OrderX") && nbt.contains("OrderY") && nbt.contains("OrderZ")
+                && nbt.contains("OrderExpiresAt")) {
             activeOrder = new LoaderOrder(nbt.getString("OrderItem"), nbt.getInt("OrderCount"), nbt.getLong("OrderReward"),
-                    new BlockPos(nbt.getInt("OrderX"), nbt.getInt("OrderY"), nbt.getInt("OrderZ")));
+                    new BlockPos(nbt.getInt("OrderX"), nbt.getInt("OrderY"), nbt.getInt("OrderZ")),
+                    nbt.getLong("OrderExpiresAt"));
             setGlowing(true);
         }
     }
@@ -99,6 +102,11 @@ public class LoaderEntity extends PathAwareEntity {
         if (this.getWorld().isClient) return;
         ServerWorld sw = (ServerWorld) this.getWorld();
         long now = sw.getTime();
+
+        if (activeOrder != null && activeOrder.expired(now)) {
+            Moderncraft.LOGGER.info("Loader order expired: {}", activeOrder.itemId());
+            clearOrder();
+        }
 
         if (activeOrder == null) {
             ticksUntilNextOrder--;
@@ -165,7 +173,8 @@ public class LoaderEntity extends PathAwareEntity {
             default -> 100L;
         };
         long reward = perItem * count + 50L;
-        return new LoaderOrder(id, count, reward, dest);
+        long expiresAt = sw.getTime() + 20L * 60L * 10L;
+        return new LoaderOrder(id, count, reward, dest, expiresAt);
     }
 
     /** Selects one of the real yellow target blocks placed in the village. */
@@ -196,7 +205,8 @@ public class LoaderEntity extends PathAwareEntity {
         sp.sendMessage(Text.literal("Deliver " + activeOrder.count() + " × " +
                 displayNameOf(activeOrder.itemId()) + " to " +
                 d.getX() + ", " + d.getY() + ", " + d.getZ() +
-                ". Reward: " + activeOrder.reward() + " M$."), false);
+                ". Reward: " + activeOrder.reward() + " M$. Deadline: "
+                + Math.max(0L, (activeOrder.expiresAt() - this.getWorld().getTime()) / 20L) + " seconds."), false);
         // We don't take the items from the player here — delivery is
         // completed by interacting with the destination block (see LoaderTarget
         // for the matching logic). This makes 'delivery' feel like a real

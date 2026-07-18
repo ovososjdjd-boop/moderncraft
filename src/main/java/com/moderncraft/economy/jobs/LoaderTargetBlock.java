@@ -109,6 +109,7 @@ public class LoaderTargetBlock extends BlockWithEntity {
                 LoaderEntity.class,
                 new net.minecraft.util.math.Box(target).expand(radius),
                 e -> e.activeOrder() != null
+                        && !e.activeOrder().expired(world.getTime())
                         && e.activeOrder().destination() != null
                         && e.activeOrder().destination().equals(target))) {
             return entity;
