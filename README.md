@@ -2,7 +2,7 @@
 
 A Fabric mod for **Minecraft 1.21.1** that turns survival into a living economy. Vanilla villager trading is gone — everything goes through phones, banks, jobs and a stock exchange.
 
-The world starts empty. The first player to join a world gets a starter village generated near spawn, complete with working buildings and two NPCs.
+Vanilla villages remain in the world with their normal residents and behaviour. The first player who approaches each natural village triggers a one-time Moderncraft district next to it, complete with working buildings, jobs and NPCs.
 
 ## What you can do
 
@@ -15,9 +15,9 @@ The world starts empty. The first player to join a world gets a starter village 
 - **The Bank building** has the same deposit / withdraw UI as the phone, plus a 'branch lifetime deposits' stat.
 - **The Stock Exchange** lets you buy and sell shares in five companies (Logistics, RedstoneCo, Pickup Express, First M$ Bank, Industrial Foundry). Prices drift every 20 minutes.
 
-## Starter village layout
+## Moderncraft district layout
 
-When you first join a world, a 23×23 plaza is built near spawn with 9 buildings:
+When a natural village is discovered, a 23×23 district is built beside it with 9 functional locations:
 
 - **Factory** (north-west) — fully assembled, you can start a shift immediately
 - **Pickup Point** (north) — collect phone orders and sell items here
@@ -27,7 +27,7 @@ When you first join a world, a 23×23 plaza is built near spawn with 9 buildings
 - **Bank** (east) — same UI as the phone's bank app, with a stat
 - **House** (south-west, south, south-east) — three small player houses
 
-If you don't like where the village spawned, run `/village here` (operator) to regenerate it at your position.
+Use `/village status` to see how many village districts have been generated. Operators can use `/village here` or `/village regen` for controlled testing.
 
 ## Commands
 

@@ -137,6 +137,11 @@ public final class StockMarketState extends PersistentState {
         return shares.getOrDefault(playerId, java.util.Map.of()).getOrDefault(id, 0);
     }
 
+    public int totalShares(java.util.UUID playerId) {
+        return shares.getOrDefault(playerId, java.util.Map.of()).values().stream()
+                .mapToInt(Integer::intValue).sum();
+    }
+
     public boolean buy(java.util.UUID playerId, String id, int qty) {
         if (qty <= 0) return false;
         Company c = byId(id);

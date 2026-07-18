@@ -72,7 +72,7 @@ public final class ModerncraftCommand {
             source.sendMessage(() -> Text.empty()
                     .append(Text.literal("  Market: ").formatted(Formatting.GRAY))
                     .append(Text.literal(shares + " companies, " +
-                            "your portfolio: " + countHeld(m, player.getUuid().toString()) + " shares")
+                            "your portfolio: " + m.totalShares(player.getUuid()) + " shares")
                             .formatted(Formatting.WHITE)));
         }
 
@@ -81,14 +81,6 @@ public final class ModerncraftCommand {
                 "Tip: use /balance, /catalog, /village, or right-click the phone / buildings in the village.")
                 .formatted(Formatting.DARK_GRAY));
         return 1;
-    }
-
-    private static int countHeld(StockMarketState m, String playerKey) {
-        // playerKey is uuid as string. StockMarketState stores shares under
-        // company id, so the per-player holding can't be tallied without a
-        // playerId->shares map. For the summary, we just say "your portfolio"
-        // without per-company counts (the screen itself has them).
-        return 0;
     }
 
     private static String format(long v) {

@@ -9,17 +9,15 @@ import com.moderncraft.economy.stock.StockBlocks;
 import net.minecraft.block.Block;
 import net.minecraft.block.Blocks;
 import net.minecraft.entity.Entity;
-import net.minecraft.entity.EntityType;
 import net.minecraft.entity.player.PlayerEntity;
-import net.minecraft.entity.passive.VillagerEntity;
 import net.minecraft.server.world.ServerWorld;
 import net.minecraft.util.math.Box;
 import net.minecraft.util.math.BlockPos;
 
 /**
- * Builds a ready-made moderncraft village on first world join.
+ * Builds the Moderncraft district attached to an existing vanilla village.
  * <p>
- * The village is a 23x23 plaza surrounded by 8 buildings. Each building
+ * The district is a 23x23 plaza surrounded by 8 buildings. Each building
  * is a small vanilla-block structure with one functional block inside.
  * The player can immediately start using the buildings — no further
  * placement required.
@@ -42,7 +40,7 @@ public final class VillageGenerator {
     private VillageGenerator() {}
 
     public static void generate(ServerWorld world, BlockPos center) {
-        removeResidentsAndJobs(world, center);
+        removeDistrictEntities(world, center);
         clearArea(world, center, 16);
 
         // Plaza floor: smooth_stone, 23x23, centred on anchor.
@@ -70,29 +68,56 @@ public final class VillageGenerator {
         placeHouse(world, center.add(-7, 1, 7));
         placeStockExchange(world, center.add(0, 1, 7));
         placeHouse(world, center.add(7, 1, 7));
-        placeResidents(world, center);
     }
 
-    private static void placeResidents(ServerWorld world, BlockPos center) {
-        spawnResident(world, center.add(-7, 1, 7), "Resident Mira");
-        spawnResident(world, center.add(7, 1, 7), "Resident Oleg");
-        spawnResident(world, center.add(0, 1, 10), "Resident Ada");
-    }
-
-    private static void spawnResident(ServerWorld world, BlockPos pos, String name) {
-        VillagerEntity villager = EntityType.VILLAGER.create(world);
-        if (villager == null) return;
-        villager.refreshPositionAndAngles(pos.getX() + 0.5, pos.getY(), pos.getZ() + 0.5, 0.0f, 0.0f);
-        villager.setAiDisabled(true);
-        villager.setCustomName(net.minecraft.text.Text.literal(name));
-        villager.setCustomNameVisible(true);
-        world.spawnEntity(villager);
-    }
-
-    private static void removeResidentsAndJobs(ServerWorld world, BlockPos center) {
-        Box area = new Box(center).expand(16.0);
+    private static void removeDistrictEntities(ServerWorld world, BlockPos center) {
+        Box area = new Box(center).expand(20.0);
         world.getOtherEntities(null, area, entity -> !(entity instanceof PlayerEntity))
                 .forEach(Entity::discard);
+    }
+
+    /**
+     * Finds a free, reasonably flat district site outside the vanilla village.
+     * The district is deliberately placed 40 blocks away so the generator never
+     * deletes vanilla houses, farms, villagers or POIs.
+     */
+    public static BlockPos findDistrictOrigin(ServerWorld world, BlockPos villageCenter, BlockPos playerPos) {
+        int[][] offsets = {{0, 40}, {0, -40}, {40, 0}, {-40, 0}};
+        int bestDistance = -1;
+        BlockPos best = null;
+        for (int[] offset : offsets) {
+            int x = villageCenter.getX() + offset[0];
+            int z = villageCenter.getZ() + offset[1];
+            int y = world.getTopY(net.minecraft.world.Heightmap.Type.WORLD_SURFACE, x, z);
+            if (y <= world.getBottomY() + 4 || !isFlat(world, x, y, z, 14) || !isClear(world, x, y, z, 15)) continue;
+            int distance = playerPos == null ? 0 : (int) Math.round(playerPos.getSquaredDistance(x + 0.5, y, z + 0.5));
+            if (best == null || distance > bestDistance) {
+                best = new BlockPos(x, y, z);
+                bestDistance = distance;
+            }
+        }
+        return best;
+    }
+
+    private static boolean isFlat(ServerWorld world, int cx, int cy, int cz, int radius) {
+        for (int dx = -radius; dx <= radius; dx++) {
+            for (int dz = -radius; dz <= radius; dz++) {
+                int y = world.getTopY(net.minecraft.world.Heightmap.Type.WORLD_SURFACE, cx + dx, cz + dz);
+                if (Math.abs(y - cy) > 2) return false;
+            }
+        }
+        return true;
+    }
+
+    private static boolean isClear(ServerWorld world, int cx, int cy, int cz, int radius) {
+        for (int dx = -radius; dx <= radius; dx++) {
+            for (int dz = -radius; dz <= radius; dz++) {
+                for (int dy = 1; dy <= 8; dy++) {
+                    if (!world.getBlockState(new BlockPos(cx + dx, cy + dy, cz + dz)).isAir()) return false;
+                }
+            }
+        }
+        return true;
     }
 
     /** Wipe a 23x23x5 area (so the generator is idempotent for testing). */

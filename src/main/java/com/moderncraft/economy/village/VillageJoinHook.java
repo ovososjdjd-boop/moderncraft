@@ -1,93 +1,79 @@
 package com.moderncraft.economy.village;
 
-import com.moderncraft.Moderncraft;
+import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
+import net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents;
+import net.minecraft.entity.passive.VillagerEntity;
+import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.server.world.ServerWorld;
+import net.minecraft.text.Text;
+import net.minecraft.util.Formatting;
 import net.minecraft.util.math.BlockPos;
 
-/**
- * Wires the village generation into the player join lifecycle.
- * <p>
- * We generate the village on the first player to join a world. We pick a
- * spot near the world spawn (or, if not set, near (0, 64, 0)) and ask the
- * generator to build it.
- * <p>
- * If a second player joins the same world later, we don't generate again —
- * the village is one per world.
- */
+import java.util.ArrayList;
+import java.util.List;
+
+/** Detects natural vanilla villages and adds one persistent Moderncraft district to each. */
 public final class VillageJoinHook {
+    private static final int SCAN_INTERVAL = 40;
+    private static int ticks;
 
     private VillageJoinHook() {}
 
     public static void register() {
-        net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents.JOIN.register((handler, sender, server) -> {
-            ServerPlayerEntity player = handler.getPlayer();
-            // Defer to next tick — at JOIN the world might still be loading.
-            server.execute(() -> tryGenerateForPlayer(player));
+        ServerPlayConnectionEvents.JOIN.register((handler, sender, server) ->
+                server.execute(() -> tryGenerateForPlayer(handler.getPlayer())));
+        ServerTickEvents.END_SERVER_TICK.register(server -> {
+            if (++ticks % SCAN_INTERVAL != 0) return;
+            for (ServerPlayerEntity player : server.getPlayerManager().getPlayerList()) {
+                tryGenerateForPlayer(player);
+            }
         });
     }
 
     public static void tryGenerateForPlayer(ServerPlayerEntity player) {
         ServerWorld world = player.getServerWorld();
-        if (world.isClient) return;
-        VillageState state = VillageState.get(player.getServer());
-        if (state.isGenerated()) return;
+        if (world == null) return;
+        BlockPos villageCenter = findNearbyVillage(world, player);
+        if (villageCenter == null) return;
 
-        // Try to find a flat surface near the world spawn.
-        BlockPos spawn = world.getSpawnPos();
-        if (spawn.getY() <= world.getBottomY()) {
-            // No valid spawn yet — bail; we'll try again next join.
-            return;
-        }
-        BlockPos center = findFlatGround(world, spawn);
-        if (center == null) {
-            Moderncraft.LOGGER.warn("Could not find flat ground for village near {}", spawn);
-            return;
-        }
-        Moderncraft.LOGGER.info("Generating moderncraft village at {}", center);
-        VillageGenerator.generate(world, center);
-        state.setCenter(center);
-        // Welcome the player with a short tour.
-        player.sendMessage(net.minecraft.text.Text.literal(""), false);
-        player.sendMessage(net.minecraft.text.Text.literal(
-                "Welcome to your moderncraft village.").formatted(net.minecraft.util.Formatting.GOLD), false);
-        player.sendMessage(net.minecraft.text.Text.literal(
-                "The cafe courier and loader have jobs for you, and residents accept courier parcels. The bank stores your money. The stock exchange buys and sells shares."), false);
-        player.sendMessage(net.minecraft.text.Text.literal(
-                "Right-click the phone in your inventory to open the catalog. /moderncraft for a status summary."), false);
+        VillageState state = VillageState.get(player.getServer());
+        if (state.contains(villageCenter)) return;
+
+        BlockPos districtOrigin = VillageGenerator.findDistrictOrigin(world, villageCenter, player.getBlockPos());
+        if (districtOrigin == null) return; // try again when the player returns / chunks load
+
+        VillageGenerator.generate(world, districtOrigin);
+        state.markGenerated(villageCenter, districtOrigin);
+        player.sendMessage(Text.literal("Moderncraft district added to the village: pickup point, bank, cafe, factory, jobs and stock exchange.")
+                .formatted(Formatting.GOLD), true);
     }
 
     /**
-     * Scans a 50x50 area around the spawn and finds a 5x5 patch of
-     * solid stone/grass at the same Y. Used to put the village on a nice
-     * flat place instead of half-floating in the air.
+     * Natural villagers are used as a stable, version-independent village signal.
+     * Moderncraft residents have AI disabled and are deliberately ignored.
      */
-    private static BlockPos findFlatGround(ServerWorld world, BlockPos around) {
-        int baseY = world.getTopY(net.minecraft.world.Heightmap.Type.WORLD_SURFACE, around.getX(), around.getZ());
-        BlockPos.Mutable m = new BlockPos.Mutable();
-        for (int r = 0; r <= 30; r += 5) {
-            for (int dx = -r; dx <= r; dx += 2) {
-                for (int dz = -r; dz <= r; dz += 2) {
-                    int x = around.getX() + dx;
-                    int z = around.getZ() + dz;
-                    int y = world.getTopY(net.minecraft.world.Heightmap.Type.WORLD_SURFACE, x, z);
-                    if (y <= world.getBottomY() + 4) continue;
-                    if (isFlatPatch(world, x, y, z, 3)) {
-                        return new BlockPos(x, y, z);
-                    }
-                }
-            }
-        }
-        return null;
-    }
+    private static BlockPos findNearbyVillage(ServerWorld world, ServerPlayerEntity player) {
+        List<VillagerEntity> nearby = world.getEntitiesByClass(
+                VillagerEntity.class,
+                player.getBoundingBox().expand(96.0),
+                villager -> !villager.isAiDisabled());
+        if (nearby.size() < 2) return null;
 
-    private static boolean isFlatPatch(ServerWorld world, int cx, int cy, int cz, int r) {
-        for (int dx = -r; dx <= r; dx++) {
-            for (int dz = -r; dz <= r; dz++) {
-                int y = world.getTopY(net.minecraft.world.Heightmap.Type.WORLD_SURFACE, cx + dx, cz + dz);
-                if (Math.abs(y - cy) > 2) return false;
-            }
+        VillagerEntity seed = nearby.stream()
+                .min((a, b) -> Double.compare(a.squaredDistanceTo(player), b.squaredDistanceTo(player)))
+                .orElse(null);
+        if (seed == null) return null;
+
+        List<VillagerEntity> cluster = new ArrayList<>();
+        for (VillagerEntity villager : nearby) {
+            if (villager.squaredDistanceTo(seed) <= 64.0 * 64.0) cluster.add(villager);
         }
-        return true;
+        if (cluster.size() < 2) return null;
+
+        double x = cluster.stream().mapToDouble(VillagerEntity::getX).average().orElse(seed.getX());
+        double z = cluster.stream().mapToDouble(VillagerEntity::getZ).average().orElse(seed.getZ());
+        int y = world.getTopY(net.minecraft.world.Heightmap.Type.WORLD_SURFACE, (int) x, (int) z);
+        return new BlockPos((int) Math.floor(x), y, (int) Math.floor(z));
     }
 }
