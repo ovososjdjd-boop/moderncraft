@@ -52,7 +52,7 @@ public final class VillageJoinHook {
         player.sendMessage(net.minecraft.text.Text.literal(
                 "Welcome to your moderncraft village.").formatted(net.minecraft.util.Formatting.GOLD), false);
         player.sendMessage(net.minecraft.text.Text.literal(
-                "The cafe courier and the loader have jobs for you. The bank stores your money. The stock exchange buys and sells shares."), false);
+                "The cafe courier and loader have jobs for you, and residents accept courier parcels. The bank stores your money. The stock exchange buys and sells shares."), false);
         player.sendMessage(net.minecraft.text.Text.literal(
                 "Right-click the phone in your inventory to open the catalog. /moderncraft for a status summary."), false);
     }

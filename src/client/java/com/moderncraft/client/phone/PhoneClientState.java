@@ -22,6 +22,21 @@ public final class PhoneClientState {
 
     public static long wallet = 0L;
     public static long bank = 0L;
+    public static final List<PendingOrder> pendingOrders = new ArrayList<>();
+
+    public record PendingOrder(String itemId, int count) {}
+
+    public static void onOrdersSync(String encoded) {
+        pendingOrders.clear();
+        if (encoded == null || encoded.isBlank()) return;
+        for (String row : encoded.split(";")) {
+            String[] parts = row.split("\\|", 2);
+            if (parts.length == 2) {
+                try { pendingOrders.add(new PendingOrder(parts[0], Integer.parseInt(parts[1]))); }
+                catch (NumberFormatException ignored) { }
+            }
+        }
+    }
 
     private PhoneClientState() {}
 

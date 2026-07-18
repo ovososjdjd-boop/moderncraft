@@ -42,6 +42,11 @@ public class PickupPointScreen extends Screen {
         rebuildButtons();
     }
 
+    public void refresh() {
+        clearChildren();
+        init();
+    }
+
     private void rebuildEntries() {
         entries.clear();
         if (this.client == null || this.client.player == null) return;
@@ -89,6 +94,10 @@ public class PickupPointScreen extends Screen {
                 Text.literal("Sell All Priced").formatted(Formatting.GOLD),
                 b -> PickupPointNetworking.sendSellAll())
                 .dimensions(this.width / 2 - 100, 8, 100, 20).build());
+        addDrawableChild(ButtonWidget.builder(
+                Text.literal("Collect Orders").formatted(Formatting.AQUA),
+                b -> PickupPointNetworking.sendCollect())
+                .dimensions(this.width / 2 + 5, 8, 105, 20).build());
         addDrawableChild(ButtonWidget.builder(Text.literal("Back"), b -> close())
                 .dimensions(8, this.height - 26, 60, 20).build());
 
@@ -144,6 +153,9 @@ public class PickupPointScreen extends Screen {
         ctx.fill(0, 0, this.width, this.height, 0xFF101418);
         ctx.fill(0, 0, this.width, 32, 0xFF202830);
         ctx.drawText(this.textRenderer, "Pickup Point", 8, 12, 0xFFFFFFFF, true);
+        int orderItems = PhoneClientState.pendingOrders.stream().mapToInt(PhoneClientState.PendingOrder::count).sum();
+        String orders = "Paid orders: " + orderItems;
+        ctx.drawText(this.textRenderer, orders, 8, 28, 0xFF80C0E0, true);
         String bal = "Wallet: " + fmt(PhoneClientState.wallet) + " M$";
         ctx.drawText(this.textRenderer, bal, this.width - this.textRenderer.getWidth(bal) - 8, 12,
                 0xFFA0E0A0, true);

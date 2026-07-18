@@ -9,7 +9,9 @@ import net.minecraft.world.PersistentState;
 import net.minecraft.world.PersistentStateType;
 import net.minecraft.world.World;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
@@ -32,6 +34,7 @@ public final class WorldEconomyState extends PersistentState {
                                PlayerAccount.CODEC);
 
     private final Map<UUID, PlayerAccount> accounts = new HashMap<>();
+    private final Map<UUID, List<PurchaseOrder>> pendingOrders = new HashMap<>();
 
     public static final PersistentStateType<WorldEconomyState> TYPE = new PersistentStateType<>(
             Identifier.of(Moderncraft.MOD_ID, "world_economy"),
@@ -64,6 +67,23 @@ public final class WorldEconomyState extends PersistentState {
         return accounts;
     }
 
+    public List<PurchaseOrder> pendingOrders(UUID playerId) {
+        return List.copyOf(pendingOrders.getOrDefault(playerId, List.of()));
+    }
+
+    public void addOrder(UUID playerId, PurchaseOrder order) {
+        if (!order.valid()) throw new IllegalArgumentException("Invalid purchase order");
+        pendingOrders.computeIfAbsent(playerId, ignored -> new ArrayList<>()).add(order);
+        markDirty();
+    }
+
+    /** Removes and returns all paid orders atomically; called only at a pickup point. */
+    public List<PurchaseOrder> takeOrders(UUID playerId) {
+        List<PurchaseOrder> orders = pendingOrders.remove(playerId);
+        markDirty();
+        return orders == null ? List.of() : List.copyOf(orders);
+    }
+
     // --- persistence plumbing ------------------------------------------------
 
     public static WorldEconomyState fromNbt(net.minecraft.nbt.NbtCompound nbt,
@@ -85,6 +105,24 @@ public final class WorldEconomyState extends PersistentState {
                 }
             }
         }
+        if (nbt.contains("pendingOrders")) {
+            net.minecraft.nbt.NbtCompound orders = nbt.getCompound("pendingOrders");
+            for (String key : orders.getKeys()) {
+                try {
+                    UUID id = UUID.fromString(key);
+                    net.minecraft.nbt.NbtList list = orders.getList(key, net.minecraft.nbt.NbtElement.COMPOUND_TYPE);
+                    List<PurchaseOrder> parsed = new ArrayList<>();
+                    for (net.minecraft.nbt.NbtElement element : list) {
+                        net.minecraft.nbt.NbtCompound order = (net.minecraft.nbt.NbtCompound) element;
+                        PurchaseOrder parsedOrder = new PurchaseOrder(order.getString("item"), order.getInt("count"));
+                        if (parsedOrder.valid()) parsed.add(parsedOrder);
+                    }
+                    if (!parsed.isEmpty()) state.pendingOrders.put(id, parsed);
+                } catch (Exception e) {
+                    Moderncraft.LOGGER.warn("Skipping corrupt pending orders for {}: {}", key, e.toString());
+                }
+            }
+        }
         return state;
     }
 
@@ -98,6 +136,18 @@ public final class WorldEconomyState extends PersistentState {
             inner.put(entry.getKey().toString(), encoded);
         }
         nbt.put("accounts", inner);
+        net.minecraft.nbt.NbtCompound orders = new net.minecraft.nbt.NbtCompound();
+        for (Map.Entry<UUID, List<PurchaseOrder>> entry : pendingOrders.entrySet()) {
+            net.minecraft.nbt.NbtList list = new net.minecraft.nbt.NbtList();
+            for (PurchaseOrder order : entry.getValue()) {
+                net.minecraft.nbt.NbtCompound encoded = new net.minecraft.nbt.NbtCompound();
+                encoded.putString("item", order.itemId());
+                encoded.putInt("count", order.count());
+                list.add(encoded);
+            }
+            if (!list.isEmpty()) orders.put(entry.getKey().toString(), list);
+        }
+        nbt.put("pendingOrders", orders);
         return nbt;
     }
 

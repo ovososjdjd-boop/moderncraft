@@ -41,20 +41,9 @@ public final class StockMarketState extends PersistentState {
         }
     }
 
-    /** Player shareholding: company id -> share count. */
-    public static class Portfolio extends PersistentState {
-        public final java.util.Map<String, Integer> shares = new java.util.HashMap<>();
-        @Override public NbtCompound writeNbt(NbtCompound nbt) {
-            java.util.List<String> keys = new java.util.ArrayList<>(shares.keySet());
-            for (int i = 0; i < keys.size(); i++) {
-                nbt.putInt(keys.get(i), shares.get(keys.get(i)));
-            }
-            return nbt;
-        }
-    }
-
+    /** Player shareholding: player UUID -> company id -> share count. */
     private final List<Company> companies = new ArrayList<>();
-    private final java.util.Map<String, Integer> shares = new java.util.HashMap<>();
+    private final java.util.Map<java.util.UUID, java.util.Map<String, Integer>> shares = new java.util.HashMap<>();
     private long tickCount = 0L;
 
     public StockMarketState() {
@@ -87,9 +76,21 @@ public final class StockMarketState extends PersistentState {
             }
         }
         if (nbt.contains("shares")) {
-            NbtCompound sh = nbt.getCompound("shares");
-            for (String key : sh.getKeys()) {
-                s.shares.put(key, sh.getInt(key));
+            NbtCompound all = nbt.getCompound("shares");
+            for (String uuidKey : all.getKeys()) {
+                try {
+                    java.util.UUID playerId = java.util.UUID.fromString(uuidKey);
+                    NbtCompound portfolio = all.getCompound(uuidKey);
+                    java.util.Map<String, Integer> owned = new java.util.HashMap<>();
+                    for (String companyId : portfolio.getKeys()) {
+                        int count = portfolio.getInt(companyId);
+                        if (count > 0) owned.put(companyId, count);
+                    }
+                    if (!owned.isEmpty()) s.shares.put(playerId, owned);
+                } catch (IllegalArgumentException ignored) {
+                    // Ignore the pre-0.2 global-share format rather than assigning
+                    // another player's shares to the first player who joins.
+                }
             }
         }
         return s;
@@ -108,7 +109,13 @@ public final class StockMarketState extends PersistentState {
         }
         nbt.put("companies", c);
         NbtCompound sh = new NbtCompound();
-        for (var e : shares.entrySet()) sh.putInt(e.getKey(), e.getValue());
+        for (var portfolio : shares.entrySet()) {
+            NbtCompound owned = new NbtCompound();
+            for (var holding : portfolio.getValue().entrySet()) {
+                if (holding.getValue() > 0) owned.putInt(holding.getKey(), holding.getValue());
+            }
+            if (!owned.isEmpty()) sh.put(portfolio.getKey().toString(), owned);
+        }
         nbt.put("shares", sh);
         return nbt;
     }
@@ -126,30 +133,34 @@ public final class StockMarketState extends PersistentState {
         return null;
     }
 
-    public int sharesOf(String id) {
-        return shares.getOrDefault(id, 0);
+    public int sharesOf(java.util.UUID playerId, String id) {
+        return shares.getOrDefault(playerId, java.util.Map.of()).getOrDefault(id, 0);
     }
 
-    public boolean buy(String id, int qty) {
+    public boolean buy(java.util.UUID playerId, String id, int qty) {
         if (qty <= 0) return false;
         Company c = byId(id);
         if (c == null) return false;
-        long cost = c.price() * qty;
-        // Wallet check is done outside; here we just record.
-        shares.merge(id, qty, Integer::sum);
+        java.util.Map<String, Integer> portfolio = shares.computeIfAbsent(playerId, ignored -> new java.util.HashMap<>());
+        int current = portfolio.getOrDefault(id, 0);
+        if (current > Integer.MAX_VALUE - qty) return false;
+        portfolio.put(id, current + qty);
         markDirty();
         return true;
     }
 
-    public long sell(String id, int qty) {
+    public long sell(java.util.UUID playerId, String id, int qty) {
         if (qty <= 0) return 0L;
         Company c = byId(id);
         if (c == null) return 0L;
-        int have = sharesOf(id);
+        java.util.Map<String, Integer> portfolio = shares.get(playerId);
+        if (portfolio == null) return 0L;
+        int have = portfolio.getOrDefault(id, 0);
         int actual = Math.min(qty, have);
         if (actual == 0) return 0L;
-        shares.merge(id, -actual, Integer::sum);
-        if (shares.get(id) == 0) shares.remove(id);
+        if (actual == have) portfolio.remove(id);
+        else portfolio.put(id, have - actual);
+        if (portfolio.isEmpty()) shares.remove(playerId);
         markDirty();
         return (long) actual * c.price();
     }

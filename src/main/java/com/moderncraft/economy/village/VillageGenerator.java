@@ -8,7 +8,12 @@ import com.moderncraft.economy.jobs.JobBlocks;
 import com.moderncraft.economy.stock.StockBlocks;
 import net.minecraft.block.Block;
 import net.minecraft.block.Blocks;
+import net.minecraft.entity.Entity;
+import net.minecraft.entity.EntityType;
+import net.minecraft.entity.player.PlayerEntity;
+import net.minecraft.entity.passive.VillagerEntity;
 import net.minecraft.server.world.ServerWorld;
+import net.minecraft.util.math.Box;
 import net.minecraft.util.math.BlockPos;
 
 /**
@@ -37,6 +42,7 @@ public final class VillageGenerator {
     private VillageGenerator() {}
 
     public static void generate(ServerWorld world, BlockPos center) {
+        removeResidentsAndJobs(world, center);
         clearArea(world, center, 16);
 
         // Plaza floor: smooth_stone, 23x23, centred on anchor.
@@ -64,6 +70,29 @@ public final class VillageGenerator {
         placeHouse(world, center.add(-7, 1, 7));
         placeStockExchange(world, center.add(0, 1, 7));
         placeHouse(world, center.add(7, 1, 7));
+        placeResidents(world, center);
+    }
+
+    private static void placeResidents(ServerWorld world, BlockPos center) {
+        spawnResident(world, center.add(-7, 1, 7), "Resident Mira");
+        spawnResident(world, center.add(7, 1, 7), "Resident Oleg");
+        spawnResident(world, center.add(0, 1, 10), "Resident Ada");
+    }
+
+    private static void spawnResident(ServerWorld world, BlockPos pos, String name) {
+        VillagerEntity villager = EntityType.VILLAGER.create(world);
+        if (villager == null) return;
+        villager.refreshPositionAndAngles(pos.getX() + 0.5, pos.getY(), pos.getZ() + 0.5, 0.0f, 0.0f);
+        villager.setAiDisabled(true);
+        villager.setCustomName(net.minecraft.text.Text.literal(name));
+        villager.setCustomNameVisible(true);
+        world.spawnEntity(villager);
+    }
+
+    private static void removeResidentsAndJobs(ServerWorld world, BlockPos center) {
+        Box area = new Box(center).expand(16.0);
+        world.getOtherEntities(null, area, entity -> !(entity instanceof PlayerEntity))
+                .forEach(Entity::discard);
     }
 
     /** Wipe a 23x23x5 area (so the generator is idempotent for testing). */

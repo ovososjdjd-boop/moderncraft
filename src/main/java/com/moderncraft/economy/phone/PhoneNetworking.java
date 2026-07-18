@@ -40,6 +40,8 @@ import java.util.UUID;
  */
 public final class PhoneNetworking {
 
+    private static boolean commonRegistered = false;
+
     private PhoneNetworking() {}
 
     public static final Identifier OPEN_REQUEST_ID = Moderncraft.id("phone_open_request");
@@ -132,6 +134,8 @@ public final class PhoneNetworking {
     // --- registration -------------------------------------------------------
 
     public static void registerCommon() {
+        if (commonRegistered) return;
+        commonRegistered = true;
         PayloadTypeRegistry.playC2S().register(OpenPhoneRequestPayload.ID, OpenPhoneRequestPayload.CODEC);
         PayloadTypeRegistry.playC2S().register(BuyItemPayload.ID, BuyItemPayload.CODEC);
         PayloadTypeRegistry.playC2S().register(BankActionPayload.ID, BankActionPayload.CODEC);
@@ -155,7 +159,7 @@ public final class PhoneNetworking {
             ServerPlayerEntity player = ctx.player();
             MinecraftServer server = player.getServer();
             String id = payload.itemId();
-            int count = Math.max(1, payload.count());
+            int count = Math.min(Math.max(1, payload.count()), 2304);
             var priceOpt = com.moderncraft.economy.price.PriceCatalogView.lookupById(id);
             if (priceOpt.isEmpty()) {
                 sendError(player, "Item '" + id + "' is not sold in the catalog.");
@@ -164,6 +168,12 @@ public final class PhoneNetworking {
             var price = priceOpt.get();
             if (price.buy() <= 0) {
                 sendError(player, price.displayName() + " cannot be purchased.");
+                return;
+            }
+            Identifier itemIdentifier = Identifier.tryParse(id);
+            Item item = itemIdentifier == null ? null : Registries.ITEM.get(itemIdentifier);
+            if (item == null) {
+                sendError(player, "Item id not in registry: " + id);
                 return;
             }
             long total = (long) price.buy() * count;
@@ -178,40 +188,13 @@ public final class PhoneNetworking {
                 syncBalances(player, server);
                 return;
             }
-            // Try to give the items to the player. If their inventory is full,
-            // refund the money and tell them.
-            Item item = Registries.ITEM.get(Identifier.tryParse(id) == null
-                    ? Identifier.of("minecraft", id) : Identifier.tryParse(id));
-            if (item == null) {
-                // Should not happen if catalog is in sync with the registry.
-                com.moderncraft.economy.state.EconomyService.creditWallet(
-                        server, player.getUuid(), total);
-                sendError(player, "Item id not in registry: " + id);
-                syncBalances(player, server);
-                return;
-            }
-            ItemStack stack = new ItemStack(item, count);
-            boolean fits = player.getInventory().insertStack(stack);
-            if (!fits || stack.getCount() > 0) {
-                // Some or all of the stack didn't fit — refund the difference.
-                int returned = stack.getCount();
-                long refund = (long) returned * price.buy();
-                if (refund > 0) {
-                    com.moderncraft.economy.state.EconomyService.creditWallet(
-                            server, player.getUuid(), refund);
-                }
-                if (returned == count) {
-                    sendError(player, "Your inventory is full.");
-                    syncBalances(player, server);
-                    return;
-                }
-                sendInfo(player, "Bought " + (count - returned) + " × " + price.displayName()
-                        + " (your inventory filled up; "
-                        + returned + " not delivered, refunded " + refund + " M$).");
-            } else {
-                sendInfo(player, "Bought " + count + " × " + price.displayName()
-                        + " for " + total + " M$.");
-            }
+            // Purchases are paid for immediately but remain at the pickup point.
+            // This prevents remote buying from becoming an inventory teleport and
+            // gives the delivery system a real economic role.
+            var state = com.moderncraft.economy.state.WorldEconomyState.get(server);
+            state.addOrder(player.getUuid(), new com.moderncraft.economy.state.PurchaseOrder(id, count));
+            sendInfo(player, "Order placed: " + count + " × " + price.displayName()
+                    + ". Collect it at a Pickup Point.");
             syncBalances(player, server);
         });
 

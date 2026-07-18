@@ -1,6 +1,5 @@
 package com.moderncraft.client.phone;
 
-import com.moderncraft.economy.price.PriceCategory;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.gui.screen.Screen;
 import net.minecraft.client.gui.widget.ButtonWidget;
@@ -83,13 +82,14 @@ public class PhoneHomeScreen extends Screen {
     }
 
     private void openStock() {
-        this.client.setScreen(new PlaceholderScreen("Stock",
-                Text.literal("The stock exchange is coming in a future update.")));
+        com.moderncraft.economy.stock.StockNetworking.sendOpenRequest();
     }
 
     private void openJobs() {
         this.client.setScreen(new PlaceholderScreen("Jobs",
-                Text.literal("Courier, loader, and factory worker jobs will be added in a future update.")));
+                Text.literal("Courier: take an order at the cafe and deliver it to a villager. " +
+                        "Loader: accept a heavy-load order and deliver it to the highlighted target. " +
+                        "Factory: start a shift at the factory base.")));
     }
 
     // --- inner types --------------------------------------------------------

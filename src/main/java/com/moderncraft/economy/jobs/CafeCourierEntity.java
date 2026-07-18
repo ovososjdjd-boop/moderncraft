@@ -10,6 +10,7 @@ import net.minecraft.entity.mob.PathAwareEntity;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
+import net.minecraft.nbt.NbtCompound;
 import net.minecraft.particle.ParticleTypes;
 import net.minecraft.registry.Registries;
 import net.minecraft.server.network.ServerPlayerEntity;
@@ -59,6 +60,34 @@ public class CafeCourierEntity extends PathAwareEntity {
     }
 
     public CourierOrder activeOrder() { return activeOrder; }
+
+    /** Completes an order after the player delivers it to a villager. */
+    public void completeOrder() {
+        activeOrder = null;
+        this.setGlowing(false);
+        ticksUntilNextOrder = 60 * 20 + this.getWorld().getRandom().nextInt(30 * 20);
+    }
+
+    @Override
+    protected void writeCustomDataToNbt(NbtCompound nbt) {
+        super.writeCustomDataToNbt(nbt);
+        nbt.putInt("TicksUntilNextOrder", ticksUntilNextOrder);
+        if (activeOrder != null) {
+            nbt.putString("OrderItem", activeOrder.itemId());
+            nbt.putInt("OrderCount", activeOrder.count());
+            nbt.putLong("OrderReward", activeOrder.reward());
+        }
+    }
+
+    @Override
+    protected void readCustomDataFromNbt(NbtCompound nbt) {
+        super.readCustomDataFromNbt(nbt);
+        ticksUntilNextOrder = nbt.getInt("TicksUntilNextOrder");
+        if (nbt.contains("OrderItem")) {
+            activeOrder = new CourierOrder(nbt.getString("OrderItem"), nbt.getInt("OrderCount"), nbt.getLong("OrderReward"));
+            setGlowing(true);
+        }
+    }
 
     @Override
     protected void initGoals() {
@@ -123,46 +152,13 @@ public class CafeCourierEntity extends PathAwareEntity {
     protected ActionResult interactMob(PlayerEntity player, Hand hand) {
         if (this.getWorld().isClient) return ActionResult.SUCCESS;
         if (!(player instanceof ServerPlayerEntity sp)) return ActionResult.CONSUME;
-
         if (activeOrder == null) {
             sp.sendMessage(Text.literal("The courier has no open orders. Check back soon."), true);
-            return ActionResult.CONSUME;
+        } else {
+            sp.sendMessage(Text.literal("Parcel: " + activeOrder.count() + " × "
+                    + displayNameOf(activeOrder.itemId()) + ". Deliver it to a villager within the village. Reward: "
+                    + activeOrder.reward() + " M$."), false);
         }
-        // Count the items in the player's inventory.
-        int have = countInInventory(player, activeOrder.itemId());
-        if (have < activeOrder.count()) {
-            sp.sendMessage(Text.literal("The courier wants " + activeOrder.count() + " × " +
-                    displayNameOf(activeOrder.itemId()) +
-                    ". You have " + have + ". Come back when you have enough."), true);
-            return ActionResult.CONSUME;
-        }
-        // Take exactly the requested amount.
-        int remaining = activeOrder.count();
-        for (int i = 0; i < player.getInventory().size() && remaining > 0; i++) {
-            ItemStack stack = player.getInventory().getStack(i);
-            Identifier id = Registries.ITEM.getId(stack.getItem());
-            if (id != null && id.toString().equals(activeOrder.itemId())) {
-                int take = Math.min(stack.getCount(), remaining);
-                stack.decrement(take);
-                remaining -= take;
-            }
-        }
-        if (remaining > 0) {
-            // Race: items disappeared between check and take. Refund nothing.
-            sp.sendMessage(Text.literal("Hmm, the items seem to have vanished. Try again."), true);
-            return ActionResult.CONSUME;
-        }
-        // Pay and clear.
-        long reward = activeOrder.reward();
-        com.moderncraft.economy.state.EconomyService.creditWallet(
-                sp.getServer(), sp.getUuid(), reward);
-        com.moderncraft.economy.phone.PhoneNetworking.sendInfo(sp,
-                "Delivered " + activeOrder.count() + " × " + displayNameOf(activeOrder.itemId())
-                        + ". Earned " + reward + " M$.");
-        com.moderncraft.economy.phone.PhoneNetworking.syncBalances(sp, sp.getServer());
-        activeOrder = null;
-        this.setGlowing(false);
-        ticksUntilNextOrder = 60 * 20 + sp.getServer().getOverworld().random.nextInt(30 * 20);
         return ActionResult.CONSUME;
     }
 

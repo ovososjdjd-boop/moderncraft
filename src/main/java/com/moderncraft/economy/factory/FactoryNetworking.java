@@ -32,6 +32,8 @@ import java.util.List;
  */
 public final class FactoryNetworking {
 
+    private static boolean commonRegistered = false;
+
     public static final Identifier OPEN_ID = Moderncraft.id("factory_open");
     public static final Identifier START_ID = Moderncraft.id("factory_start");
     public static final Identifier END_ID = Moderncraft.id("factory_end");
@@ -114,6 +116,8 @@ public final class FactoryNetworking {
     }
 
     public static void registerCommon() {
+        if (commonRegistered) return;
+        commonRegistered = true;
         PayloadTypeRegistry.playS2C().register(OpenScreenPayload.ID, OpenScreenPayload.CODEC);
         PayloadTypeRegistry.playS2C().register(FactoryStatePayload.ID, FactoryStatePayload.CODEC);
         PayloadTypeRegistry.playC2S().register(StartShiftPayload.ID, StartShiftPayload.CODEC);
@@ -160,11 +164,16 @@ public final class FactoryNetworking {
             // Try to give the produced items to the player.
             int undelivered = 0;
             for (ItemStack stack : output) {
-                if (!player.getInventory().insertStack(stack)) undelivered += stack.getCount();
+                if (!player.getInventory().insertStack(stack) && !stack.isEmpty()) {
+                    undelivered += stack.getCount();
+                    // Never delete manufactured goods: drop the remainder at the
+                    // player's feet so a full inventory is not an economic loss.
+                    player.dropStack(stack);
+                }
             }
             if (undelivered > 0) {
-                PhoneNetworking.sendError(player, "Your inventory is full; "
-                        + undelivered + " items couldn't be delivered.");
+                PhoneNetworking.sendError(player, "Your inventory was full; "
+                        + undelivered + " items were dropped at your feet.");
             }
             PhoneNetworking.sendInfo(player, "Shift complete. Earned " + pay + " M\$.");
             PhoneNetworking.syncBalances(player, server);
